@@ -136,12 +136,12 @@ SegmentEncoder::SegmentEncoder(const SegmentationStrategy& strategy)
 	: strategy(strategy)
 { }
 
-std::vector<Segment*> SegmentEncoder::encode(MotObject* object)
+std::vector<Segment&> SegmentEncoder::encode(MotObject& object)
 {
-	std::vector<Segment*> segments;
+	std::vector<Segment&> segments;
 
 	// segment body data
-	std::vector<unsigned char> body_data = object->getBody();
+	std::vector<unsigned char> body_data = object.getBody();
 	int i = 0;
 //	while(i < body_data.length())
 //	{

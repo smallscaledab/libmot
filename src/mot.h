@@ -412,7 +412,7 @@ namespace mot {
 
 		SegmentEncoder(const SegmentationStrategy& strategy = ConstantSizeSegmentationStrategy());
 
-		std::vector<Segment*> encode(MotObject* object);
+		std::vector<Segment&> encode(MotObject& object);
 
 	private:
 

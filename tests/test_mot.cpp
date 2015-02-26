@@ -15,6 +15,8 @@ TEST_CASE( "MOT tests", "[mot]" ) {
 		MotObject o(id->next(), "TestObject");
 		o.addParameter(MimeType("test/thing"));
 		std::cout << o.getTransportId();
+		SegmentEncoder encoder;
+		encoder.encode(o);
 		//REQUIRE(bytes_to_hex(bytes) == "06 00 C4 79 04 EA 00" );
 	}
 
