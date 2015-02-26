@@ -5,6 +5,8 @@
 
 #include <vector>
 #include <string>
+#include <stdlib.h>
+#include <time.h>
 
 #include "util.h"
 
@@ -220,7 +222,7 @@ namespace mot {
 
 	public:
 
-		virtual int next();
+		virtual int next() = 0;
 
 	};
 
@@ -229,25 +231,54 @@ namespace mot {
 
 	public:
 
-		static TransportIdGenerator* getInstance()
+		static SequentialTransportIdGenerator* getInstance()
 		{
-			if(instance == NULL)
-			{
-				instance = new SequentialTransportIdGenerator();
-			}
+			if(!instance) instance = new SequentialTransportIdGenerator;
 			return instance;
 		}
 
 		int next();
 
+	protected:
+
+		~SequentialTransportIdGenerator() { };
+
 	private:
 
-		SequentialTransportIdGenerator();
+		SequentialTransportIdGenerator() : last(0) { };
 
-		static TransportIdGenerator* instance;
+		static SequentialTransportIdGenerator* instance;
 
 		int last;
 
+	};
+
+	class RandomTransportIdGenerator : public TransportIdGenerator
+	{
+
+	public:
+
+		static RandomTransportIdGenerator* getInstance()
+		{
+			if(!instance) instance = new RandomTransportIdGenerator;
+			return instance;
+		}
+
+		int next();
+
+	protected:
+
+		~RandomTransportIdGenerator() { };
+
+	private:
+
+		RandomTransportIdGenerator() {
+			srand(time(NULL));
+		};
+
+		static RandomTransportIdGenerator* instance;
+
+		std::vector<int> ids;
 
 	};
 

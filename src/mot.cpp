@@ -1,6 +1,8 @@
 #include "mot.h"
 #include "util.h"
 
+#include <algorithm>
+
 using namespace mot;
 
 MotObject::MotObject(int transportId, ContentName name, std::vector<unsigned char> body, ContentType type)
@@ -191,3 +193,23 @@ ConstantSizeSegmentationStrategy::ConstantSizeSegmentationStrategy(int size)
 int ConstantSizeSegmentationStrategy::getSegmentSize(MotObject* object) {
 	return size;
 }
+
+int SequentialTransportIdGenerator::next()
+{
+	return ++last;
+}
+
+SequentialTransportIdGenerator* SequentialTransportIdGenerator::instance;
+
+int RandomTransportIdGenerator::next()
+{
+	int next = rand() % (1<<16) + 1;
+	while(std::find(ids.begin(), ids.end(), next) != ids.end())
+	{
+		int next = rand() % (1<<16) + 1;
+	}
+	ids.push_back(next);
+	return next;
+}
+
+RandomTransportIdGenerator* RandomTransportIdGenerator::instance;
