@@ -209,6 +209,8 @@ namespace mot {
 
 		Compression(CompressionType type);
 
+		vector<unsigned char> encode();
+
 	private:
 
 		CompressionType type;

@@ -190,6 +190,16 @@ vector<unsigned char> AbsoluteExpiration::encode()
 	}
 }
 
+Compression::Compression(CompressionType type)
+	: HeaderParameter(17), type(type)
+{ }
+
+vector<unsigned char> Compression::encode()
+{
+	bitset<8> bits(type);
+	return bits_to_bytes(bits);
+}
+
 Priority::Priority(unsigned short int priority)
 	: HeaderParameter(10), priority(priority)
 { }
