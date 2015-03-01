@@ -2,14 +2,16 @@
 #include "util.h"
 
 #include <algorithm>
+#include <iostream>
 
+using namespace std;
 using namespace mot;
 
-MotObject::MotObject(int transportId, ContentName name, std::vector<unsigned char> body, ContentType type)
+MotObject::MotObject(int transportId, ContentName name, vector<unsigned char> body, ContentType type)
 	: transportId(transportId), name(name), body(body), type(type)
 { }
 
-MotObject::MotObject(int transportId, std::string name, std::vector<unsigned char> body, ContentType type)
+MotObject::MotObject(int transportId, string name, vector<unsigned char> body, ContentType type)
 	: transportId(transportId), name(ContentName(name)), body(body), type(type)
 { }
 
@@ -17,19 +19,19 @@ MotObject::MotObject(int transportId, ContentName name, ContentType type)
 	: transportId(transportId), name(name), type(type)
 { }
 
-MotObject::MotObject(int transportId, std::string name, ContentType type)
+MotObject::MotObject(int transportId, string name, ContentType type)
 	: transportId(transportId), name(ContentName(name)), type(type)
 { }
 
-void MotObject::addParameter(const HeaderParameter& parameter)
+void MotObject::addParameter(HeaderParameter* parameter)
 {
 	parameters.push_back(parameter);
 }
 
 template <typename T>
-std::vector<HeaderParameter> MotObject::getParameterByType()
+vector<HeaderParameter> MotObject::getParameterByType()
 {
-	std::vector<HeaderParameter> result;
+	vector<HeaderParameter> result;
 //	for(HeaderParameter& parameter : parameters)
 //	{
 //		if(typeid(parameter) == typeid(T))
@@ -59,7 +61,7 @@ void MotObject::removeParameter(HeaderParameter& parameter)
 //	{
 //		if(parameter == p)
 //		{
-//			parameters.erase(std::find(parameters.begin(), parameters.end(), parameter));
+//			parameters.erase(find(parameters.begin(), parameters.end(), parameter));
 //		}
 //	}
 };
@@ -71,7 +73,7 @@ HeaderParameter::HeaderParameter(int id)
 HeaderParameter::~HeaderParameter()
 { }
 
-ContentName::ContentName(std::string name, Charset charset)
+ContentName::ContentName(string name, Charset charset)
 	: HeaderParameter(12), name(name), charset(charset)
 { }
 
@@ -79,16 +81,32 @@ bool ContentName::operator==(const ContentName& that)
 {
 	return (this->charset == that.charset &&
 			this->name == that.name);
-
 }
 
-MimeType::MimeType(std::string mimetype)
+vector<unsigned char> ContentName::encode()
+{
+	bitset<8> bits(charset); // charset(4)
+
+	vector<unsigned char> bytes = bits_to_bytes(bits);
+	copy(name.begin(), name.end(), back_inserter(bytes));
+
+	return bytes;
+}
+
+MimeType::MimeType(string mimetype)
 	: HeaderParameter(16), mimetype(mimetype)
 { }
 
 bool MimeType::operator==(const MimeType& that)
 {
 	return (this->mimetype == that.mimetype);
+}
+
+vector<unsigned char> MimeType::encode()
+{
+	vector<unsigned char> bytes;
+	copy(mimetype.begin(), mimetype.end(), back_inserter(bytes));
+	return bytes;
 }
 
 RelativeExpiration::RelativeExpiration(long offset)
@@ -100,6 +118,39 @@ bool RelativeExpiration::operator==(const RelativeExpiration& that)
 	return (this->offset == that.offset);
 }
 
+vector<unsigned char> RelativeExpiration::encode()
+{
+	if(offset < (127 * 60)) // < 127m
+	{
+		bitset<8> bits(0 + // granularity(2)
+			((offset/(2 * 60)) << 2)); // offset in 2 minute interval (6)
+		return bits_to_bytes(bits);
+	}
+	else if(offset < (1891 * 60)) // < 1891m
+	{
+		bitset<8> bits(1 + // granularity(2)
+					  ((offset/(30 * 60)) << 2)); // offset in 30 minute interval (6)
+		return bits_to_bytes(bits);
+	}
+	else if(offset < (127 * 60 * 60)) // < 127h
+	{
+		bitset<8> bits(2 + // granularity(2)
+					  ((offset/(2 * 60 * 60)) << 2)); // offset in 2 hour interval (6)
+		return bits_to_bytes(bits);
+	}
+	else if(offset < (64 * 24 * 60 * 60)) // < 64d
+	{
+		bitset<8> bits(3 + // granularity(2)
+					  ((offset/(24 * 60 * 60)) << 2)); // offset in day interval (6)
+		return bits_to_bytes(bits);
+	}
+	else
+	{
+		// TODO raise exception
+	}
+
+}
+
 AbsoluteExpiration::AbsoluteExpiration(long timepoint)
 	: HeaderParameter(4), timepoint(timepoint)
 { }
@@ -107,6 +158,36 @@ AbsoluteExpiration::AbsoluteExpiration(long timepoint)
 bool AbsoluteExpiration::operator==(const AbsoluteExpiration& that)
 {
 	return (this->timepoint == that.timepoint);
+}
+
+vector<unsigned char> AbsoluteExpiration::encode()
+{
+	if(timepoint == 0) // NOW
+	{
+		bitset<32> bits(0);
+		return bits_to_bytes(bits);
+	}
+
+	if(timepoint / (60000))
+	{
+		int mjd = timepoint_to_mjd(timepoint);
+		bitset<48> bits(1  + // validity flag (1)
+					   (mjd << 1) + // mjd (16)
+					   (0) + // rfu (2)
+					   (1 << 19) + // UTC flag
+					   (timepoint << 20)); // timepoint (27)
+		return bits_to_bytes(bits);
+	}
+	else
+	{
+		int mjd = timepoint_to_mjd(timepoint);
+		bitset<32> bits(1  + // validity flag (1)
+					   (mjd << 1) + // mjd (16)
+					   (0) + // rfu (2)
+					   (1 << 19) + // UTC flag
+					   ((timepoint / 60000) << 20)); // timepoint (11)
+		return bits_to_bytes(bits);
+	}
 }
 
 Priority::Priority(unsigned short int priority)
@@ -118,38 +199,81 @@ bool Priority::operator==(const Priority& that)
 	return (this->priority == that.priority);
 }
 
-Segment::Segment(MotObject* object, std::vector<unsigned char> data, int repetition)
+vector<unsigned char> Priority::encode()
+{
+	bitset<8> bits(priority);
+	return bits_to_bytes(bits);
+}
+
+Segment::Segment(MotObject* object, vector<unsigned char> data, int repetition)
 	: object(object), data(data), repetition(repetition)
 { }
 
-std::vector<unsigned char> Segment::encode() {
+vector<unsigned char> Segment::encode() {
 
-	std::bitset<8> bits(data.size() + // segment size (13)
+	bitset<8> bits(data.size() + // segment size (13)
 				   repetition << 13); // repetition (3)
 
-	std::vector<unsigned char> bytes = bits_to_bytes(bits);
+	vector<unsigned char> bytes = bits_to_bytes(bits);
     bytes.insert(bytes.begin(), data.begin(), data.end());
     return bytes;
 }
 
-SegmentEncoder::SegmentEncoder(const SegmentationStrategy& strategy)
+SegmentEncoder::SegmentEncoder(SegmentationStrategy* strategy)
 	: strategy(strategy)
 { }
 
-std::vector<Segment&> SegmentEncoder::encode(MotObject& object)
+vector<Segment*> SegmentEncoder::encode(MotObject* object)
 {
-	std::vector<Segment&> segments;
+	vector<Segment*> segments;
+
+	int chunk_size = strategy->getSegmentSize(object);
+
+	// segment header data
+	vector<unsigned char> header_data;
+	header_data = header_data + object->getName().encode();
+	for(HeaderParameter* param : object->getParameters())
+	{
+		cout << "encoding param " << param->getId() << endl;
+		cout << "param: " << param->encode() << endl;
+		header_data = header_data + param->encode();
+	}
+	cout << "header data size : " << header_data.size() << endl;
+	for(vector<unsigned char> chunk : chunk_segments(header_data, chunk_size))
+	{
+		segments.push_back(new Segment(object, chunk, 1));
+	}
 
 	// segment body data
-	std::vector<unsigned char> body_data = object.getBody();
-	int i = 0;
-//	while(i < body_data.length())
-//	{
-//
-//	}
+	vector<unsigned char> body_data = object->getBody();
+	cout << "header data size : " << body_data.size() << endl;
+	for(vector<unsigned char> chunk : chunk_segments(body_data, chunk_size))
+	{
+		segments.push_back(new Segment(object, chunk, 1));
+	}
 
 	return segments;
+}
 
+vector<vector<unsigned char>> SegmentEncoder::chunk_segments(vector<unsigned char> data, int chunk_size)
+{
+	vector<vector<unsigned char>> chunks;
+
+	vector<unsigned char>::iterator start, end;
+	start = end = data.begin();
+	while(end != data.end())
+	{
+		int b = distance(end, data.end());
+		int step = min(chunk_size, b);
+		advance(end, step);
+		vector<unsigned char> chunk(end - start);
+		copy(start, end, chunk.begin());
+		advance(start, step);
+		chunks.push_back(chunk);
+	}
+
+	return chunks;
+}
 
 //
 //# split body data into segments
@@ -181,10 +305,10 @@ std::vector<Segment&> SegmentEncoder::encode(MotObject& object)
 //          datagroups.append(body_group)
 //
 //      return datagroups;
-
-
-
-}
+//
+//
+//
+//}
 
 ConstantSizeSegmentationStrategy::ConstantSizeSegmentationStrategy(int size)
 	: size(size)
@@ -204,7 +328,7 @@ SequentialTransportIdGenerator* SequentialTransportIdGenerator::instance;
 int RandomTransportIdGenerator::next()
 {
 	int next = rand() % (1<<16) + 1;
-	while(std::find(ids.begin(), ids.end(), next) != ids.end())
+	while(find(ids.begin(), ids.end(), next) != ids.end())
 	{
 		int next = rand() % (1<<16) + 1;
 	}
@@ -213,3 +337,52 @@ int RandomTransportIdGenerator::next()
 }
 
 RandomTransportIdGenerator* RandomTransportIdGenerator::instance;
+
+int mot::timepoint_to_mjd(int timepoint)
+{
+	time_t t = timepoint / 1000;
+
+	struct tm *tm;
+	tm = gmtime(&t);
+
+	int day = tm->tm_yday;
+	int month = tm->tm_mon;
+	int year = tm->tm_year + 1900;
+
+	int yearp = 0;
+	int monthp = 0;
+	if(month == 1 || month == 2)
+	{
+		yearp = year - 1;
+		monthp = month + 12;
+	} else {
+		yearp = year;
+		monthp = month;
+	}
+
+	int A, B = 0;
+	if  ((year < 1582) ||
+		(year == 1582 && month < 10) ||
+		(year == 1582 && month == 10 && day < 15))
+	{
+		B = 0;
+	} else {
+		A = trunc(yearp / 100.0);
+		B = 2 - A + trunc(A / 4.0);
+	}
+
+	int C = 0;
+	if(yearp < 0)
+	{
+		C = trunc((365.25 * yearp) - 0.75);
+	} else {
+		C = trunc(365.25 * yearp);
+	}
+
+	int D = trunc(30.6001 * (monthp + 1));
+
+	int jd = B + C + D + day + 1720994.5;
+	int mjd = jd - 2400000.5;
+
+	return mjd;
+}

@@ -10,7 +10,11 @@
 
 #include "util.h"
 
+using namespace std;
+
 namespace mot {
+
+	int timepoint_to_mjd(int timepoint);
 
 	struct ContentType
 	{
@@ -92,6 +96,10 @@ namespace mot {
 
 		~HeaderParameter();
 
+		virtual std::vector<unsigned char> encode() = 0;
+
+		int getId() { return id; };
+
 	private:
 
 		int id;
@@ -124,6 +132,8 @@ namespace mot {
 
 		bool operator==(const ContentName& other);
 
+		vector<unsigned char> encode();
+
 	private:
 
 		std::string name;
@@ -141,6 +151,9 @@ namespace mot {
 
 		bool operator==(const MimeType& other);
 
+		vector<unsigned char> encode();
+
+
 	private:
 
 		std::string mimetype;
@@ -155,6 +168,8 @@ namespace mot {
 		RelativeExpiration(long offset);
 
 		bool operator==(const RelativeExpiration& other);
+
+		vector<unsigned char> encode();
 
 
 	private:
@@ -171,6 +186,8 @@ namespace mot {
 		AbsoluteExpiration(long timepoint);
 
 		bool operator==(const AbsoluteExpiration& other);
+
+		vector<unsigned char> encode();
 
 
 	private:
@@ -205,6 +222,8 @@ namespace mot {
 		Priority(unsigned short int priority);
 
 		bool operator==(const Priority& other);
+
+		vector<unsigned char> encode();
 
 
 	private:
@@ -299,12 +318,12 @@ namespace mot {
 		/**
 		 * @brief Adds a parameter
 		 */
-		void addParameter(const HeaderParameter& parameter);
+		void addParameter(HeaderParameter* parameter);
 
 		/**
 		 * @brief Returns all parameters
 		 */
-		std::vector<HeaderParameter> getParameters() { return parameters; };
+		std::vector<HeaderParameter*> getParameters() { return parameters; };
 
 		template <typename T>
 		std::vector<HeaderParameter> getParameterByType();
@@ -330,7 +349,7 @@ namespace mot {
 
 		std::vector<unsigned char> body;
 
-		std::vector<HeaderParameter> parameters;
+		std::vector<HeaderParameter*> parameters;
 
 		int transportId;
 
@@ -410,13 +429,15 @@ namespace mot {
 
 	public:
 
-		SegmentEncoder(const SegmentationStrategy& strategy = ConstantSizeSegmentationStrategy());
+		SegmentEncoder(SegmentationStrategy* strategy = new ConstantSizeSegmentationStrategy());
 
-		std::vector<Segment&> encode(MotObject& object);
+		std::vector<Segment*> encode(MotObject* object);
 
 	private:
 
-		const SegmentationStrategy& strategy;
+		SegmentationStrategy* strategy;
+
+		vector<vector<unsigned char>> chunk_segments(vector<unsigned char> data, int chunk_size);
 
 	};
 
