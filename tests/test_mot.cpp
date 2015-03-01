@@ -25,7 +25,7 @@ TEST_CASE( "MOT tests", "[mot]" ) {
 		cout << "segments: " << segments.size() << endl;
 		for(Segment* segment : segments)
 		{
-			cout << "segment: " << segment->encode() << endl;
+			cout << "segment: " << bytes_to_hex(segment->encode()) << endl;
 		}
 		//REQUIRE(bytes_to_hex(bytes) == "06 00 C4 79 04 EA 00" );
 	}
