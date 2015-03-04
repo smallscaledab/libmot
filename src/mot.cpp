@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <math.h>
 
 using namespace std;
 using namespace mot;
@@ -29,42 +30,36 @@ void MotObject::addParameter(HeaderParameter* parameter)
 }
 
 template <typename T>
-vector<HeaderParameter> MotObject::getParameterByType()
+vector<HeaderParameter*> MotObject::getParameterByType()
 {
-	vector<HeaderParameter> result;
-//	for(HeaderParameter& parameter : parameters)
-//	{
-//		if(typeid(parameter) == typeid(T))
-//		{
-//			result.push_back(parameter);
-//		}
-//	}
+	vector<HeaderParameter*> result;
+	for(HeaderParameter* parameter : parameters)
+	{
+		if(typeid(parameter) == typeid(T))
+		{
+			result.push_back(parameter);
+		}
+	}
 	return result;
 }
 
 template <typename T>
 bool MotObject::hasParameter()
 {
-//	for(HeaderParameter& parameter : parameters)
-//	{
-//		if(typeid(parameter) == typeid(T))
-//		{
-//			return true;
-//		}
-//	}
+	for(HeaderParameter* p : parameters)
+	{
+		if(typeid(p) == typeid(T))
+		{
+			return true;
+		}
+	}
 	return false;
 }
-
-void MotObject::removeParameter(HeaderParameter& parameter)
-{
-//	for(HeaderParameter& p : parameters)
-//	{
-//		if(parameter == p)
-//		{
-//			parameters.erase(find(parameters.begin(), parameters.end(), parameter));
-//		}
-//	}
-};
+//
+//void MotObject::removeParameter(HeaderParameter& parameter)
+//{
+//	parameters.erase(find(parameters.begin(), parameters.end(), parameter));
+//};
 
 HeaderParameter::HeaderParameter(int id)
 	: id(id)
@@ -77,10 +72,11 @@ ContentName::ContentName(string name, Charset charset)
 	: HeaderParameter(12), name(name), charset(charset)
 { }
 
-bool ContentName::operator==(const ContentName& that)
+bool ContentName::equals(const HeaderParameter& other) const
 {
-	return (this->charset == that.charset &&
-			this->name == that.name);
+    const ContentName* that = dynamic_cast<const ContentName*>(&other);
+    return that != nullptr && (this->charset == that->charset &&
+			this->name == that->name);
 }
 
 vector<unsigned char> ContentName::encode()
@@ -97,9 +93,10 @@ MimeType::MimeType(string mimetype)
 	: HeaderParameter(16), mimetype(mimetype)
 { }
 
-bool MimeType::operator==(const MimeType& that)
+bool MimeType::equals(const HeaderParameter& other) const
 {
-	return (this->mimetype == that.mimetype);
+    const MimeType* that = dynamic_cast<const MimeType*>(&other);
+    return that != nullptr && (this->mimetype == that->mimetype);
 }
 
 vector<unsigned char> MimeType::encode()
@@ -113,9 +110,10 @@ RelativeExpiration::RelativeExpiration(long offset)
 	: HeaderParameter(4), offset(offset)
 { }
 
-bool RelativeExpiration::operator==(const RelativeExpiration& that)
+bool RelativeExpiration::equals(const HeaderParameter& other) const
 {
-	return (this->offset == that.offset);
+    const RelativeExpiration* that = dynamic_cast<const RelativeExpiration*>(&other);
+    return that != nullptr && (this->offset == that->offset);
 }
 
 vector<unsigned char> RelativeExpiration::encode()
@@ -144,20 +142,18 @@ vector<unsigned char> RelativeExpiration::encode()
 					  ((offset/(24 * 60 * 60)) << 2)); // offset in day interval (6)
 		return bits_to_bytes(bits);
 	}
-	else
-	{
-		// TODO raise exception
-	}
 
+	return vector<unsigned char>(); // TODO raise exception
 }
 
 AbsoluteExpiration::AbsoluteExpiration(long timepoint)
 	: HeaderParameter(4), timepoint(timepoint)
 { }
 
-bool AbsoluteExpiration::operator==(const AbsoluteExpiration& that)
+bool AbsoluteExpiration::equals(const HeaderParameter& other) const
 {
-	return (this->timepoint == that.timepoint);
+    const AbsoluteExpiration* that = dynamic_cast<const AbsoluteExpiration*>(&other);
+    return that != nullptr && (this->timepoint == that->timepoint);
 }
 
 vector<unsigned char> AbsoluteExpiration::encode()
@@ -200,6 +196,12 @@ vector<unsigned char> Compression::encode()
 	return bits_to_bytes(bits);
 }
 
+bool Compression::equals(const HeaderParameter& other) const
+{
+    const Compression* that = dynamic_cast<const Compression*>(&other);
+    return that != nullptr && (this->type == that->type);
+}
+
 Priority::Priority(unsigned short int priority)
 	: HeaderParameter(10), priority(priority)
 { }
@@ -215,17 +217,26 @@ vector<unsigned char> Priority::encode()
 	return bits_to_bytes(bits);
 }
 
+bool Priority::equals(const HeaderParameter& other) const
+{
+    const Priority* that = dynamic_cast<const Priority*>(&other);
+    return that != nullptr && (this->priority == that->priority);
+}
+
 Segment::Segment(MotObject* object, vector<unsigned char> data, int repetition)
 	: object(object), data(data), repetition(repetition)
 { }
 
 vector<unsigned char> Segment::encode() {
 
-	bitset<8> bits(data.size() + // segment size (13)
-				   repetition << 13); // repetition (3)
+	bitset<16> bits(data.size() + // segment size (13)
+				   (repetition << 13)); // repetition (3)
+
+	cout << "segment size: " << data.size() << endl;
+	cout << "segment header: " << bits << endl;
 
 	vector<unsigned char> bytes = bits_to_bytes(bits);
-    bytes.insert(bytes.begin(), data.begin(), data.end());
+    bytes.insert(bytes.end(), data.begin(), data.end());
     return bytes;
 }
 
@@ -244,11 +255,14 @@ vector<Segment*> SegmentEncoder::encode(MotObject* object)
 	header_data = header_data + object->getName().encode();
 	for(HeaderParameter* param : object->getParameters())
 	{
-		cout << "encoding param " << param->getId() << endl;
-		cout << "param: " << param->encode() << endl;
 		header_data = header_data + param->encode();
 	}
-	cout << "header data size : " << header_data.size() << endl;
+	bitset<56> core_header_bits(object->getType().subtype + // content subtype (9)
+							   (object->getType().type << 9) + // content type (6))
+							   (header_data.size() << 15) + // header size (13)
+							   (object->getBody().size() << 28)); // body size (28)
+	vector<unsigned char> core_header_data = bits_to_bytes(core_header_bits);
+	header_data.insert(header_data.begin(), core_header_data.begin(), core_header_data.end());
 	for(vector<unsigned char> chunk : chunk_segments(header_data, chunk_size))
 	{
 		segments.push_back(new Segment(object, chunk, 1));
@@ -256,7 +270,7 @@ vector<Segment*> SegmentEncoder::encode(MotObject* object)
 
 	// segment body data
 	vector<unsigned char> body_data = object->getBody();
-	cout << "header data size : " << body_data.size() << endl;
+	cout << "body data size : " << body_data.size() << endl;
 	for(vector<unsigned char> chunk : chunk_segments(body_data, chunk_size))
 	{
 		segments.push_back(new Segment(object, chunk, 1));
@@ -265,9 +279,9 @@ vector<Segment*> SegmentEncoder::encode(MotObject* object)
 	return segments;
 }
 
-vector<vector<unsigned char>> SegmentEncoder::chunk_segments(vector<unsigned char> data, int chunk_size)
+vector<vector<unsigned char> > SegmentEncoder::chunk_segments(vector<unsigned char> data, int chunk_size)
 {
-	vector<vector<unsigned char>> chunks;
+	vector<vector<unsigned char> > chunks;
 
 	vector<unsigned char>::iterator start, end;
 	start = end = data.begin();

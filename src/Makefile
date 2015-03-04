@@ -1,19 +1,25 @@
 .PHONY : clean
 
-CPPFLAGS= -g -O2 -I. -std=c++11 
-LDFLAGS= -shared 
+UNAME := $(shell uname)
+ifeq ($(UNAME), Windows_NT)
+	TARGET = mot.dll
+else
+	CXX = clang++ 
+	CPPFLAGS = -O2 -std=c++11 -stdlib=libc++ #-Weverything
+	TARGET = libmot.so
+endif
+
+LDFLAGS= -shared -std=c++11 -stdlib=libc++
 
 SOURCES = $(shell echo *.cpp)
 HEADERS = $(shell echo *.h)
 OBJECTS = $(SOURCES:.cpp=.o)
 
-TARGET=mot.dll
-
 all: $(TARGET)
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm $(OBJECTS) $(TARGET)
 
 $(TARGET) : $(OBJECTS)
 	$(CXX) $(CFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
-	cp mot.dll ..
+	cp $(TARGET) ..

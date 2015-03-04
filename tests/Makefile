@@ -1,17 +1,25 @@
 .PHONY : clean
 
-CPPFLAGS= -g -O2 -I../src -std=c++11 -I..
-LDFLAGS= -L../src -lmot
+LDFLAGS= -L.. -lmot -std=c++11 -stdlib=libc++
 
 SOURCES = $(shell echo *.cpp)
 HEADERS = $(shell echo *.h) $(shell echo *.hpp)
 OBJECTS = $(SOURCES:.cpp=.o)
-TARGETS = $(OBJECTS:.o=.exe)
+
+UNAME := $(shell uname)
+ifeq ($(UNAME), Windows_NT)
+	CPPFLAGS = -I../src
+	TARGETS = $(OBJECTS:.o=.exe)
+else
+	CXX = clang++ 
+	CPPFLAGS = -I../src -std=c++11 -stdlib=libc++ #-Weverything
+	TARGETS = $(OBJECTS:.o=)
+endif
 
 all: $(TARGETS)
 
 clean:
-	rm -f $(OBJECTS) $(TARGETS)
+	rm $(OBJECTS) $(TARGETS)
 	
 %.o : %.cpp
 	$(CXX) $(CPPFLAGS) -c -o $@ $<
@@ -19,3 +27,4 @@ clean:
 %.exe : %.o
 	@echo target
 	$(CXX) $< -o $@ $(LDFLAGS)
+	chmod +x $@

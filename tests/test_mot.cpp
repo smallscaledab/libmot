@@ -12,12 +12,12 @@ using namespace std;
 TEST_CASE( "MOT tests", "[mot]" ) {
 
 	SECTION ("MOT_1") {
-		string data("test data");
+		string data("==this is my test data====this is my test data====this is my test data====this is my test data====this is my test data====this is my test data==");
 		vector<unsigned char> bytes;
 		copy(data.begin(), data.end(), back_inserter(bytes));
 
 		RandomTransportIdGenerator* id = RandomTransportIdGenerator::getInstance();
-		MotObject o(id->next(), "TestObject", bytes);
+		MotObject o(id->next(), "TestObject", bytes, ContentTypes::Text::ASCII);
 		o.addParameter(new MimeType("test/thing"));
 		cout << "transport id: " << o.getTransportId() << endl;
 		SegmentEncoder encoder;

@@ -23,7 +23,7 @@ inline String bytes_to_hex(std::vector<unsigned char> bytes)
 {
 	String str;
     for(int i = 0; i < (int)bytes.size(); i++) {
-        const char c = bytes.at(i);
+        unsigned char c = bytes.at(i);
         str += (h[(c & 0xF0) >> 4]);
         str += (h[c & 0x0F]);
         if(i < (int)bytes.size() - 1) str += (' ');

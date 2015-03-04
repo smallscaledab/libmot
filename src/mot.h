@@ -94,11 +94,20 @@ namespace mot {
 
 		HeaderParameter(int id);
 
-		~HeaderParameter();
+		virtual ~HeaderParameter() = 0;
 
 		virtual std::vector<unsigned char> encode() = 0;
 
+		bool operator== (const HeaderParameter &other)
+		{
+			return equals(other);
+		}
+
 		int getId() { return id; };
+
+	protected:
+
+		virtual bool equals(const HeaderParameter& a) const = 0;
 
 	private:
 
@@ -130,9 +139,11 @@ namespace mot {
 
 		ContentName(std::string name, Charset charset = Charsets::ISO::Latin1);
 
-		bool operator==(const ContentName& other);
-
 		vector<unsigned char> encode();
+
+	protected:
+
+		bool equals(const HeaderParameter& a) const;
 
 	private:
 
@@ -149,10 +160,11 @@ namespace mot {
 
 		MimeType(std::string mimetype);
 
-		bool operator==(const MimeType& other);
-
 		vector<unsigned char> encode();
 
+	protected:
+
+		bool equals(const HeaderParameter& a) const;
 
 	private:
 
@@ -167,10 +179,11 @@ namespace mot {
 
 		RelativeExpiration(long offset);
 
-		bool operator==(const RelativeExpiration& other);
-
 		vector<unsigned char> encode();
 
+	protected:
+
+		bool equals(const HeaderParameter& a) const;
 
 	private:
 
@@ -185,10 +198,11 @@ namespace mot {
 
 		AbsoluteExpiration(long timepoint);
 
-		bool operator==(const AbsoluteExpiration& other);
-
 		vector<unsigned char> encode();
 
+	protected:
+
+		bool equals(const HeaderParameter& a) const;
 
 	private:
 
@@ -211,6 +225,10 @@ namespace mot {
 
 		vector<unsigned char> encode();
 
+	protected:
+
+		bool equals(const HeaderParameter& a) const;
+
 	private:
 
 		CompressionType type;
@@ -227,6 +245,9 @@ namespace mot {
 
 		vector<unsigned char> encode();
 
+	protected:
+
+		bool equals(const HeaderParameter& a) const;
 
 	private:
 
@@ -328,7 +349,7 @@ namespace mot {
 		std::vector<HeaderParameter*> getParameters() { return parameters; };
 
 		template <typename T>
-		std::vector<HeaderParameter> getParameterByType();
+		std::vector<HeaderParameter*> getParameterByType();
 
 		template <typename T>
 		bool hasParameter();
@@ -439,7 +460,7 @@ namespace mot {
 
 		SegmentationStrategy* strategy;
 
-		vector<vector<unsigned char>> chunk_segments(vector<unsigned char> data, int chunk_size);
+		vector<vector<unsigned char> > chunk_segments(vector<unsigned char> data, int chunk_size);
 
 	};
 
