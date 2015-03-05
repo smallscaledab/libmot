@@ -158,32 +158,7 @@ bool AbsoluteExpiration::equals(const HeaderParameter& other) const
 
 vector<unsigned char> AbsoluteExpiration::encode()
 {
-	if(timepoint == 0) // NOW
-	{
-		bitset<32> bits(0);
-		return bits_to_bytes(bits);
-	}
-
-	if(timepoint / (60000))
-	{
-		int mjd = timepoint_to_mjd(timepoint);
-		bitset<48> bits(1  + // validity flag (1)
-					   (mjd << 1) + // mjd (16)
-					   (0) + // rfu (2)
-					   (1 << 19) + // UTC flag
-					   (timepoint << 20)); // timepoint (27)
-		return bits_to_bytes(bits);
-	}
-	else
-	{
-		int mjd = timepoint_to_mjd(timepoint);
-		bitset<32> bits(1  + // validity flag (1)
-					   (mjd << 1) + // mjd (16)
-					   (0) + // rfu (2)
-					   (1 << 19) + // UTC flag
-					   ((timepoint / 60000) << 20)); // timepoint (11)
-		return bits_to_bytes(bits);
-	}
+	return timepoint_to_encoded_utc(timepoint);
 }
 
 Compression::Compression(CompressionType type)
@@ -409,4 +384,34 @@ int mot::timepoint_to_mjd(int timepoint)
 	int mjd = jd - 2400000.5;
 
 	return mjd;
+}
+
+vector<unsigned char> mot::timepoint_to_encoded_utc(int timepoint)
+{
+	if(timepoint == 0) // NOW
+	{
+		bitset<32> bits(0);
+		return bits_to_bytes(bits);
+	}
+
+	if(timepoint / (60000))
+	{
+		int mjd = timepoint_to_mjd(timepoint);
+		bitset<48> bits(1  + // validity flag (1)
+					   (mjd << 1) + // mjd (16)
+					   (0) + // rfu (2)
+					   (1 << 19) + // UTC flag
+					   (timepoint << 20)); // timepoint (27)
+		return bits_to_bytes(bits);
+	}
+	else
+	{
+		int mjd = timepoint_to_mjd(timepoint);
+		bitset<32> bits(1  + // validity flag (1)
+					   (mjd << 1) + // mjd (16)
+					   (0) + // rfu (2)
+					   (1 << 19) + // UTC flag
+					   ((timepoint / 60000) << 20)); // timepoint (11)
+		return bits_to_bytes(bits);
+	}
 }

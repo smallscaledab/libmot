@@ -14,6 +14,8 @@ using namespace std;
 
 namespace mot {
 
+	vector<unsigned char> timepoint_to_encoded_utc(int timepoint);
+
 	int timepoint_to_mjd(int timepoint);
 
 	struct ContentType
@@ -394,6 +396,8 @@ namespace mot {
 		std::vector<unsigned char> encode();
 
 		int getRepetition() { return repetition; };
+
+		int getSize() { return data.size(); };
 
 	private:
 
