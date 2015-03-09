@@ -181,11 +181,6 @@ Priority::Priority(unsigned short int priority)
 	: HeaderParameter(10), priority(priority)
 { }
 
-bool Priority::operator==(const Priority& that)
-{
-	return (this->priority == that.priority);
-}
-
 vector<unsigned char> Priority::encode()
 {
 	bitset<8> bits(priority);
@@ -198,18 +193,31 @@ bool Priority::equals(const HeaderParameter& other) const
     return that != nullptr && (this->priority == that->priority);
 }
 
-Segment::Segment(MotObject* object, vector<unsigned char> data, int repetition)
-	: object(object), data(data), repetition(repetition)
+DirectoryParameter::DirectoryParameter(int id)
+	: id(id)
 { }
 
-vector<unsigned char> Segment::encode() {
+DirectoryParameter::~DirectoryParameter()
+{ }
 
+SortedHeaderInformation::SortedHeaderInformation() :
+	DirectoryParameter(0)
+{ }
+
+vector<unsigned char> SortedHeaderInformation::encode()
+{
+	return vector<unsigned char>();
+}
+
+Segment::Segment(int transportId, vector<unsigned char> data, int index, int repetition, SegmentDatagroupTypes::type type, bool last)
+	: transportId(transportId), data(data), index(index), repetition(repetition), type(type), last(last)
+{
+	cout << "creating segment: data=" << data.size() << endl;
+}
+
+vector<unsigned char> Segment::encode() {
 	bitset<16> bits(data.size() + // segment size (13)
 				   (repetition << 13)); // repetition (3)
-
-	cout << "segment size: " << data.size() << endl;
-	cout << "segment header: " << bits << endl;
-
 	vector<unsigned char> bytes = bits_to_bytes(bits);
     bytes.insert(bytes.end(), data.begin(), data.end());
     return bytes;
@@ -219,36 +227,117 @@ SegmentEncoder::SegmentEncoder(SegmentationStrategy* strategy)
 	: strategy(strategy)
 { }
 
-vector<Segment*> SegmentEncoder::encode(MotObject* object)
+vector<Segment*> SegmentEncoder::encode(MotObject& object)
 {
+	cout << "encoding object in header mode" << endl;
+
 	vector<Segment*> segments;
 
 	int chunk_size = strategy->getSegmentSize(object);
 
 	// segment header data
 	vector<unsigned char> header_data;
-	header_data = header_data + object->getName().encode();
-	for(HeaderParameter* param : object->getParameters())
+	header_data = header_data + object.getName().encode();
+	for(HeaderParameter* param : object.getParameters())
 	{
 		header_data = header_data + param->encode();
 	}
-	bitset<56> core_header_bits(object->getType().subtype + // content subtype (9)
-							   (object->getType().type << 9) + // content type (6))
+	bitset<56> core_header_bits(object.getType().subtype + // content subtype (9)
+							   (object.getType().type << 9) + // content type (6))
 							   (header_data.size() << 15) + // header size (13)
-							   (object->getBody().size() << 28)); // body size (28)
+							   (object.getBody().size() << 28)); // body size (28)
 	vector<unsigned char> core_header_data = bits_to_bytes(core_header_bits);
 	header_data.insert(header_data.begin(), core_header_data.begin(), core_header_data.end());
-	for(vector<unsigned char> chunk : chunk_segments(header_data, chunk_size))
+	vector<vector<unsigned char> > chunked_segments = chunk_segments(header_data, chunk_size);
+	for (auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
-		segments.push_back(new Segment(object, chunk, 1));
+		segments.push_back(
+				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Header,
+						(i == chunked_segments.end()) ? true : false));
 	}
 
 	// segment body data
-	vector<unsigned char> body_data = object->getBody();
+	vector<unsigned char> body_data = object.getBody();
 	cout << "body data size : " << body_data.size() << endl;
-	for(vector<unsigned char> chunk : chunk_segments(body_data, chunk_size))
+	chunked_segments = chunk_segments(body_data, chunk_size);
+	for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
-		segments.push_back(new Segment(object, chunk, 1));
+		segments.push_back(
+				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Body,
+						(i == chunked_segments.end()) ? true : false));
+	}
+
+	return segments;
+}
+
+vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject*> objects, vector<DirectoryParameter*> parameters)
+{
+	cout << "encode " << objects.size() << " objects in directory mode with " << parameters.size() + " parameters" << endl;
+
+	vector<Segment*> segments;
+
+	// encode the directory
+	vector<unsigned char> directory_data;
+
+	// directory entries
+	vector<unsigned char> directory_entries_data;
+	for(MotObject* object : objects)
+	{
+		vector<unsigned char> header_data;
+		header_data = header_data + object->getName().encode();
+		for(HeaderParameter* param : object->getParameters())
+		{
+			header_data = header_data + param->encode();
+		}
+		bitset<56> core_header_bits(object->getType().subtype + // content subtype (9)
+								   (object->getType().type << 9) + // content type (6))
+								   (header_data.size() << 15) + // header size (13)
+								   (object->getBody().size() << 28)); // body size (28)
+		vector<unsigned char> core_header_data = bits_to_bytes(core_header_bits);
+		header_data.insert(header_data.begin(), core_header_data.begin(), core_header_data.end());
+		vector<unsigned char> transport_id_data = bits_to_bytes(bitset<16>(object->getTransportId()));
+		header_data.insert(header_data.begin(), transport_id_data.begin(), transport_id_data.end());
+		directory_entries_data = directory_entries_data + header_data;
+	}
+
+	// directory extension
+	vector<unsigned char> directory_extension_data;
+	for(DirectoryParameter* parameter : parameters)
+	{
+		directory_extension_data = directory_extension_data + parameter->encode();
+	}
+	directory_extension_data = directory_extension_data + bits_to_bytes(bitset<16>(directory_extension_data.size()));
+
+	// calculate directory object size
+	int directory_size = 4 + 2 + 5 + directory_extension_data.size() + directory_entries_data.size();
+
+	// put it all together
+	directory_data = directory_data + bits_to_bytes(bitset<32>(directory_size));
+	directory_data = directory_data + bits_to_bytes(bitset<16>(objects.size()));
+	directory_data = directory_data + bits_to_bytes(bitset<40>());
+	directory_data = directory_data + directory_extension_data;
+	directory_data = directory_data + directory_entries_data;
+
+	// segment the data
+	vector<vector<unsigned char> > chunked_segments = chunk_segments(directory_data, strategy->getSegmentSize());
+	for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
+	{
+		segments.push_back(
+				new Segment(transportId, *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Directory_Uncompressed,
+						(i == chunked_segments.end()) ? true : false));
+	}
+
+	// segment up the objects
+	for(MotObject* object : objects)
+	{
+		// segment the data
+		vector<vector<unsigned char> > chunked_segments = chunk_segments(object->getBody(), strategy->getSegmentSize(*object));
+		for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
+		{
+			segments.push_back(
+					new Segment(object->getTransportId(), *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Body,
+							(i == chunked_segments.end()) ? true : false));
+		}
 	}
 
 	return segments;
@@ -274,46 +363,15 @@ vector<vector<unsigned char> > SegmentEncoder::chunk_segments(vector<unsigned ch
 	return chunks;
 }
 
-//
-//# split body data into segments
-//      body_data = object.get_body()
-//      body_segments = _segment(body_data, segmenting_strategy)
-//
-//      # encode header extension parameters
-//      extension_bits = bitarray()
-//      for parameter in object.get_parameters():
-//          extension_bits += parameter.encode()
-//
-//      # insert the core parameters into the header
-//      bits = bitarray()
-//      bits += int_to_bitarray(len(body_data) if body_data else 0, 28) # (0-27): BodySize in bytes
-//      bits += int_to_bitarray(extension_bits.length() / 8 + 7, 13) # (28-40): HeaderSize in bytes (core=7 + extension)
-//      bits += int_to_bitarray(object.get_type().type, 6)  # (41-46): ContentType
-//      bits += int_to_bitarray(object.get_type().subtype, 9) # (47-55): ContentSubType
-//      bits += extension_bits # (56-n): Header extension data
-//      header_segments = _segment(bits.tobytes(), segmenting_strategy)
-//
-//      # add header datagroups
-//      for i, segment in enumerate(header_segments):
-//          header_group = Datagroup(object.get_transport_id(), HEADER, segment, i, i%16, last=True if i == len(header_segments) - 1 else False)
-//          datagroups.append(header_group)
-//
-//      # add body datagroups
-//      for i, segment in enumerate(body_segments):
-//          body_group = Datagroup(object.get_transport_id(), BODY, segment, i, i%16, last=True if i == len(body_segments) - 1 else False)
-//          datagroups.append(body_group)
-//
-//      return datagroups;
-//
-//
-//
-//}
-
 ConstantSizeSegmentationStrategy::ConstantSizeSegmentationStrategy(int size)
 	: size(size)
 { }
 
-int ConstantSizeSegmentationStrategy::getSegmentSize(MotObject* object) {
+int ConstantSizeSegmentationStrategy::getSegmentSize() {
+	return size;
+}
+
+int ConstantSizeSegmentationStrategy::getSegmentSize(MotObject& object) {
 	return size;
 }
 

@@ -243,8 +243,6 @@ namespace mot {
 
 		Priority(unsigned short int priority);
 
-		bool operator==(const Priority& other);
-
 		vector<unsigned char> encode();
 
 	protected:
@@ -254,6 +252,49 @@ namespace mot {
 	private:
 
 		unsigned short int priority;
+	};
+
+	class DirectoryParameter
+	{
+
+	public:
+
+		DirectoryParameter(int id);
+
+		virtual ~DirectoryParameter() = 0;
+
+		virtual std::vector<unsigned char> encode() = 0;
+
+		bool operator== (const DirectoryParameter &other)
+		{
+			return equals(other);
+		}
+
+		int getId() { return id; };
+
+	protected:
+
+		virtual bool equals(const DirectoryParameter& a) const = 0;
+
+	private:
+
+		int id;
+
+	};
+
+	class SortedHeaderInformation : public DirectoryParameter
+	{
+
+	public:
+
+		SortedHeaderInformation();
+
+	protected:
+
+		bool equals(const DirectoryParameter& a) const { return true; }
+
+		vector<unsigned char> encode();
+
 	};
 
 	/**
@@ -348,7 +389,7 @@ namespace mot {
 		/**
 		 * @brief Returns all parameters
 		 */
-		std::vector<HeaderParameter*> getParameters() { return parameters; };
+		std::vector<HeaderParameter*> getParameters() const { return parameters; };
 
 		template <typename T>
 		std::vector<HeaderParameter*> getParameterByType();
@@ -358,13 +399,13 @@ namespace mot {
 
 		void removeParameter(HeaderParameter& parameter);
 
-		int getTransportId() { return transportId; };
+		int getTransportId() const { return transportId; };
 
-		ContentName getName() { return name; };
+		ContentName getName() const { return name; };
 
-		ContentType getType() { return type; };
+		ContentType getType() const { return type; };
 
-		std::vector<unsigned char> getBody() { return body; };
+		std::vector<unsigned char> getBody() const { return body; };
 
 	private:
 
@@ -380,6 +421,17 @@ namespace mot {
 
 	};
 
+	namespace SegmentDatagroupTypes
+	{
+		enum type
+		{
+			Header = 3,
+			Body = 4,
+			Directory_Uncompressed = 6,
+			Directory_Compressed = 7
+		};
+	};
+
 	class Segment
 	{
 
@@ -389,23 +441,40 @@ namespace mot {
 		 * @brief MOT segment
 		 * @param object Source MOT object
 		 * @param data Encoded segment data
+		 * @param index Segment index
 		 * @param repetition Remaining repetitions (>6=indefinite)
+		 * @param type Segment data type
+		 * @param last True if this is the last segment of this type (header or body)
 		 */
-		Segment(MotObject* object, std::vector<unsigned char> data, int repetition);
+		Segment(int transportId, std::vector<unsigned char> data, int index, int repetition, SegmentDatagroupTypes::type type, bool last = false);
 
 		std::vector<unsigned char> encode();
 
+		int getIndex() { return index; };
+
 		int getRepetition() { return repetition; };
+
+		SegmentDatagroupTypes::type getType() { return type; };
+
+		bool isLast() { return last; };
 
 		int getSize() { return data.size(); };
 
+		int getTransportId() { return transportId; };
+
 	private:
+
+		int index;
 
 		int repetition;
 
+		SegmentDatagroupTypes::type type;
+
+		bool last;
+
 		std::vector<unsigned char> data;
 
-		MotObject* object;
+		int transportId;
 
 	};
 
@@ -414,7 +483,9 @@ namespace mot {
 
 	public:
 
-		virtual int getSegmentSize(MotObject* object) = 0;
+		virtual int getSegmentSize() = 0;
+
+		virtual int getSegmentSize(MotObject& object) = 0;
 	};
 
 	/**
@@ -434,7 +505,9 @@ namespace mot {
 		 */
 		ConstantSizeSegmentationStrategy(int size = MAX_SEGMENT_SIZE);
 
-		int getSegmentSize(MotObject* object);
+		int getSegmentSize();
+
+		int getSegmentSize(MotObject& object);
 
 	private:
 
@@ -458,7 +531,16 @@ namespace mot {
 
 		SegmentEncoder(SegmentationStrategy* strategy = new ConstantSizeSegmentationStrategy());
 
-		std::vector<Segment*> encode(MotObject* object);
+		/**
+		 * Segment a single MOT object in MOT Header Mode
+		 * @param object MOT object to encode
+		 */
+		vector<Segment*> encode(MotObject& object);
+
+		/**
+		 * Segment s directory of MOT objects in MOT directory Mode
+		 */
+		vector<Segment*> encode(int transportId, vector<MotObject*> objects, vector<DirectoryParameter*> parameters = vector<DirectoryParameter*>());
 
 	private:
 
