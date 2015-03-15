@@ -324,19 +324,22 @@ namespace mot {
 
 		int next();
 
+		static int initial;
+
 	protected:
 
 		~SequentialTransportIdGenerator() { };
 
 	private:
 
-		SequentialTransportIdGenerator() : last(0) { };
+		SequentialTransportIdGenerator() : last(initial-1) { };
 
 		static SequentialTransportIdGenerator* instance;
 
 		int last;
 
 	};
+	int SequentialTransportIdGenerator::initial = 0;
 
 	class RandomTransportIdGenerator : public TransportIdGenerator
 	{
@@ -399,13 +402,13 @@ namespace mot {
 
 		void removeParameter(HeaderParameter& parameter);
 
-		int getTransportId() const { return transportId; };
+		int getTransportId() { return transportId; };
 
-		ContentName getName() const { return name; };
+		ContentName getName() { return name; };
 
-		ContentType getType() const { return type; };
+		ContentType getType() { return type; };
 
-		std::vector<unsigned char> getBody() const { return body; };
+		std::vector<unsigned char> getBody() { return body; };
 
 	private:
 
@@ -421,15 +424,14 @@ namespace mot {
 
 	};
 
-	namespace SegmentDatagroupTypes
+	typedef int SegmentDatagroupType;
+	class SegmentDatagroupTypes
 	{
-		enum type
-		{
-			Header = 3,
-			Body = 4,
-			Directory_Uncompressed = 6,
-			Directory_Compressed = 7
-		};
+	public:
+		static const SegmentDatagroupType Header = 3;
+		static const SegmentDatagroupType Body = 4;
+		static const SegmentDatagroupType Directory_Uncompressed = 6;
+		static const SegmentDatagroupType Directory_Compressed = 7;
 	};
 
 	class Segment
@@ -446,7 +448,7 @@ namespace mot {
 		 * @param type Segment data type
 		 * @param last True if this is the last segment of this type (header or body)
 		 */
-		Segment(int transportId, std::vector<unsigned char> data, int index, int repetition, SegmentDatagroupTypes::type type, bool last = false);
+		Segment(int transportId, std::vector<unsigned char> data, int index, int repetition, SegmentDatagroupType type, bool last = false);
 
 		std::vector<unsigned char> encode();
 
@@ -454,7 +456,7 @@ namespace mot {
 
 		int getRepetition() { return repetition; };
 
-		SegmentDatagroupTypes::type getType() { return type; };
+		SegmentDatagroupType getType() { return type; };
 
 		bool isLast() { return last; };
 
@@ -468,7 +470,7 @@ namespace mot {
 
 		int repetition;
 
-		SegmentDatagroupTypes::type type;
+		SegmentDatagroupType type;
 
 		bool last;
 

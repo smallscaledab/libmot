@@ -10,19 +10,27 @@ using namespace mot;
 
 MotObject::MotObject(int transportId, ContentName name, vector<unsigned char> body, ContentType type)
 	: transportId(transportId), name(name), body(body), type(type)
-{ }
+{
+	addParameter(static_cast<HeaderParameter*>(&name));
+}
 
 MotObject::MotObject(int transportId, string name, vector<unsigned char> body, ContentType type)
 	: transportId(transportId), name(ContentName(name)), body(body), type(type)
-{ }
+{
+	addParameter(new ContentName(name));
+}
 
 MotObject::MotObject(int transportId, ContentName name, ContentType type)
 	: transportId(transportId), name(name), type(type)
-{ }
+{
+	addParameter(static_cast<HeaderParameter*>(&name));
+}
 
 MotObject::MotObject(int transportId, string name, ContentType type)
 	: transportId(transportId), name(ContentName(name)), type(type)
-{ }
+{
+	addParameter(new ContentName(name));
+}
 
 void MotObject::addParameter(HeaderParameter* parameter)
 {
@@ -81,7 +89,7 @@ bool ContentName::equals(const HeaderParameter& other) const
 
 vector<unsigned char> ContentName::encode()
 {
-	bitset<8> bits(charset); // charset(4)
+	bitset<8> bits(charset << 4); // charset(4)
 
 	vector<unsigned char> bytes = bits_to_bytes(bits);
 	copy(name.begin(), name.end(), back_inserter(bytes));
@@ -209,11 +217,9 @@ vector<unsigned char> SortedHeaderInformation::encode()
 	return vector<unsigned char>();
 }
 
-Segment::Segment(int transportId, vector<unsigned char> data, int index, int repetition, SegmentDatagroupTypes::type type, bool last)
+Segment::Segment(int transportId, vector<unsigned char> data, int index, int repetition, SegmentDatagroupType type, bool last)
 	: transportId(transportId), data(data), index(index), repetition(repetition), type(type), last(last)
-{
-	cout << "creating segment: data=" << data.size() << endl;
-}
+{ }
 
 vector<unsigned char> Segment::encode() {
 	bitset<16> bits(data.size() + // segment size (13)
@@ -229,18 +235,52 @@ SegmentEncoder::SegmentEncoder(SegmentationStrategy* strategy)
 
 vector<Segment*> SegmentEncoder::encode(MotObject& object)
 {
-	cout << "encoding object in header mode" << endl;
-
 	vector<Segment*> segments;
 
 	int chunk_size = strategy->getSegmentSize(object);
 
 	// segment header data
 	vector<unsigned char> header_data;
-	header_data = header_data + object.getName().encode();
 	for(HeaderParameter* param : object.getParameters())
 	{
-		header_data = header_data + param->encode();
+		vector<unsigned char> encoded_param_data = param->encode();
+		if(encoded_param_data.size() == 0)
+		{
+			bitset<8> pli_bits((param->getId()) + // ParamId (6)
+							  (0 << 6)); // PLI=0 (2)
+			header_data = header_data + bits_to_bytes(pli_bits);
+		}
+		else if(encoded_param_data.size() == 1)
+		{
+			bitset<8> pli_bits((param->getId()) + // ParamId (6)
+							  (1 << 6)); // PLI=1 (2)
+			header_data = header_data + bits_to_bytes(pli_bits);
+		}
+		else if(encoded_param_data.size() == 4)
+		{
+			bitset<8> pli_bits((param->getId()) + // ParamId (6)
+							  (2 << 6)); // PLI=2 (2)
+			header_data = header_data + bits_to_bytes(pli_bits);
+		}
+		else if(encoded_param_data.size() <= 127)
+		{
+			bitset<16> pli_bits(encoded_param_data.size() + // DataFieldLength (7)
+							   (0 << 7) + // Ext=0
+							   (param->getId() << 8) + // ParamId (6)
+							   (3 << 14)); // PLI=3 (2)
+			header_data = header_data + bits_to_bytes(pli_bits);
+		}
+		else
+		{
+			bitset<24> pli_bits(encoded_param_data.size() + // DataFieldLength (15)
+							   (1 << 15) + // Ext=1
+							   (param->getId() << 16) + // ParamId (6)
+							   (3 << 22)); // PLI=3 (2)
+			header_data = header_data + bits_to_bytes(pli_bits);
+		}
+
+		// add param data
+		header_data = header_data + encoded_param_data;
 	}
 	bitset<56> core_header_bits(object.getType().subtype + // content subtype (9)
 							   (object.getType().type << 9) + // content type (6))
@@ -252,19 +292,18 @@ vector<Segment*> SegmentEncoder::encode(MotObject& object)
 	for (auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
 		segments.push_back(
-				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Header,
-						(i == chunked_segments.end()) ? true : false));
+				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Header,
+						(i == (chunked_segments.end() - 1)) ? true : false));
 	}
 
 	// segment body data
 	vector<unsigned char> body_data = object.getBody();
-	cout << "body data size : " << body_data.size() << endl;
 	chunked_segments = chunk_segments(body_data, chunk_size);
 	for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
 		segments.push_back(
-				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Body,
-						(i == chunked_segments.end()) ? true : false));
+				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
+						(i == (chunked_segments.end() - 1)) ? true : false));
 	}
 
 	return segments;
@@ -272,8 +311,6 @@ vector<Segment*> SegmentEncoder::encode(MotObject& object)
 
 vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject*> objects, vector<DirectoryParameter*> parameters)
 {
-	cout << "encode " << objects.size() << " objects in directory mode with " << parameters.size() + " parameters" << endl;
-
 	vector<Segment*> segments;
 
 	// encode the directory
@@ -318,13 +355,13 @@ vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject*> obje
 	directory_data = directory_data + directory_extension_data;
 	directory_data = directory_data + directory_entries_data;
 
-	// segment the data
+	// segment the directory
 	vector<vector<unsigned char> > chunked_segments = chunk_segments(directory_data, strategy->getSegmentSize());
 	for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
 		segments.push_back(
-				new Segment(transportId, *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Directory_Uncompressed,
-						(i == chunked_segments.end()) ? true : false));
+				new Segment(transportId, *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Directory_Uncompressed,
+						(distance(i, (chunked_segments.end() - 1)) == 0) ? true : false));
 	}
 
 	// segment up the objects
@@ -335,8 +372,8 @@ vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject*> obje
 		for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 		{
 			segments.push_back(
-					new Segment(object->getTransportId(), *i, distance(chunked_segments.begin(), i), 1, SegmentDatagroupTypes::Body,
-							(i == chunked_segments.end()) ? true : false));
+					new Segment(object->getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
+							(distance(i, --chunked_segments.end()) == 0) ? true : false));
 		}
 	}
 

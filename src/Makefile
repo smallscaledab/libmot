@@ -21,5 +21,4 @@ clean:
 	rm $(OBJECTS) $(TARGET)
 
 $(TARGET) : $(OBJECTS)
-	$(CXX) $(CFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
-	cp $(TARGET) ..
+	$(CXX) $(CFLAGS) $(OBJECTS) -o ../$@ $(LDFLAGS)

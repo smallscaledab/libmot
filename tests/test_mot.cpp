@@ -24,6 +24,7 @@ TEST_CASE( "MOT encoding tests", "[mot]" ) {
 		for(Segment* segment : segments)
 		{
 			cout << "segment: " << bytes_to_hex(segment->encode()) << endl;
+			cout << "last: " << segment->isLast() << endl;
 		}
 		//REQUIRE(bytes_to_hex(bytes) == "06 00 C4 79 04 EA 00" );
 	}
