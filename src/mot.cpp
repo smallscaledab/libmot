@@ -8,31 +8,43 @@
 using namespace std;
 using namespace mot;
 
-MotObject::MotObject(int transportId, ContentName name, vector<unsigned char> body, ContentType type)
+MotObject::MotObject(int transportId, ContentName &name, const vector<unsigned char> &body, ContentType type)
 	: transportId(transportId), name(name), body(body), type(type)
 {
-	addParameter(static_cast<HeaderParameter*>(&name));
+	addParameter(&name);
 }
 
-MotObject::MotObject(int transportId, string name, vector<unsigned char> body, ContentType type)
+MotObject::MotObject(int transportId, string &name, const vector<unsigned char> &body, ContentType type)
 	: transportId(transportId), name(ContentName(name)), body(body), type(type)
 {
 	addParameter(new ContentName(name));
 }
 
-MotObject::MotObject(int transportId, ContentName name, ContentType type)
-	: transportId(transportId), name(name), type(type)
+MotObject::MotObject(int transportId, const char *name, const vector<unsigned char> &body, ContentType type)
+	: transportId(transportId), name(ContentName(name)), body(body), type(type)
 {
-	addParameter(static_cast<HeaderParameter*>(&name));
+	addParameter(new ContentName(string(name)));
 }
 
-MotObject::MotObject(int transportId, string name, ContentType type)
+MotObject::MotObject(int transportId, ContentName &name, ContentType type)
+	: transportId(transportId), name(name), type(type)
+{
+	addParameter(&name);
+}
+
+MotObject::MotObject(int transportId, string &name, ContentType type)
 	: transportId(transportId), name(ContentName(name)), type(type)
 {
 	addParameter(new ContentName(name));
 }
 
-void MotObject::addParameter(HeaderParameter* parameter)
+MotObject::MotObject(int transportId, const char *name, ContentType type)
+	: transportId(transportId), name(ContentName(name)), type(type)
+{
+	addParameter(new ContentName(string(name)));
+}
+
+void MotObject::addParameter(HeaderParameter *parameter)
 {
 	parameters.push_back(parameter);
 }
@@ -41,7 +53,7 @@ template <typename T>
 vector<HeaderParameter*> MotObject::getParameterByType()
 {
 	vector<HeaderParameter*> result;
-	for(HeaderParameter* parameter : parameters)
+	for(HeaderParameter *parameter : parameters)
 	{
 		if(typeid(parameter) == typeid(T))
 		{
@@ -76,7 +88,7 @@ HeaderParameter::HeaderParameter(int id)
 HeaderParameter::~HeaderParameter()
 { }
 
-ContentName::ContentName(string name, Charset charset)
+ContentName::ContentName(const string &name, Charset charset)
 	: HeaderParameter(12), name(name), charset(charset)
 { }
 
@@ -87,7 +99,7 @@ bool ContentName::equals(const HeaderParameter& other) const
 			this->name == that->name);
 }
 
-vector<unsigned char> ContentName::encode()
+vector<unsigned char> ContentName::encode() const
 {
 	bitset<8> bits(charset << 4); // charset(4)
 
@@ -97,7 +109,7 @@ vector<unsigned char> ContentName::encode()
 	return bytes;
 }
 
-MimeType::MimeType(string mimetype)
+MimeType::MimeType(const string &mimetype)
 	: HeaderParameter(16), mimetype(mimetype)
 { }
 
@@ -107,7 +119,7 @@ bool MimeType::equals(const HeaderParameter& other) const
     return that != nullptr && (this->mimetype == that->mimetype);
 }
 
-vector<unsigned char> MimeType::encode()
+vector<unsigned char> MimeType::encode() const
 {
 	vector<unsigned char> bytes;
 	copy(mimetype.begin(), mimetype.end(), back_inserter(bytes));
@@ -124,7 +136,7 @@ bool RelativeExpiration::equals(const HeaderParameter& other) const
     return that != nullptr && (this->offset == that->offset);
 }
 
-vector<unsigned char> RelativeExpiration::encode()
+vector<unsigned char> RelativeExpiration::encode() const
 {
 	if(offset < (127 * 60)) // < 127m
 	{
@@ -164,7 +176,7 @@ bool AbsoluteExpiration::equals(const HeaderParameter& other) const
     return that != nullptr && (this->timepoint == that->timepoint);
 }
 
-vector<unsigned char> AbsoluteExpiration::encode()
+vector<unsigned char> AbsoluteExpiration::encode() const
 {
 	return timepoint_to_encoded_utc(timepoint);
 }
@@ -173,7 +185,7 @@ Compression::Compression(CompressionType type)
 	: HeaderParameter(17), type(type)
 { }
 
-vector<unsigned char> Compression::encode()
+vector<unsigned char> Compression::encode() const
 {
 	bitset<8> bits(type);
 	return bits_to_bytes(bits);
@@ -189,7 +201,7 @@ Priority::Priority(unsigned short int priority)
 	: HeaderParameter(10), priority(priority)
 { }
 
-vector<unsigned char> Priority::encode()
+vector<unsigned char> Priority::encode() const
 {
 	bitset<8> bits(priority);
 	return bits_to_bytes(bits);
@@ -212,16 +224,16 @@ SortedHeaderInformation::SortedHeaderInformation() :
 	DirectoryParameter(0)
 { }
 
-vector<unsigned char> SortedHeaderInformation::encode()
+vector<unsigned char> SortedHeaderInformation::encode() const
 {
 	return vector<unsigned char>();
 }
 
-Segment::Segment(int transportId, vector<unsigned char> data, int index, int repetition, SegmentDatagroupType type, bool last)
+Segment::Segment(int transportId, const vector<unsigned char> &data, int index, int repetition, SegmentDatagroupType type, bool last)
 	: transportId(transportId), data(data), index(index), repetition(repetition), type(type), last(last)
 { }
 
-vector<unsigned char> Segment::encode() {
+vector<unsigned char> Segment::encode() const {
 	bitset<16> bits(data.size() + // segment size (13)
 				   (repetition << 13)); // repetition (3)
 	vector<unsigned char> bytes = bits_to_bytes(bits);
@@ -233,10 +245,10 @@ SegmentEncoder::SegmentEncoder(SegmentationStrategy* strategy)
 	: strategy(strategy)
 { }
 
-vector<Segment*> SegmentEncoder::encode(MotObject& object)
+vector<Segment*> SegmentEncoder::encode(const MotObject &object)
 {
 	vector<Segment*> segments;
-
+	
 	int chunk_size = strategy->getSegmentSize(object);
 
 	// segment header data
@@ -244,6 +256,7 @@ vector<Segment*> SegmentEncoder::encode(MotObject& object)
 	for(HeaderParameter* param : object.getParameters())
 	{
 		vector<unsigned char> encoded_param_data = param->encode();
+
 		if(encoded_param_data.size() == 0)
 		{
 			bitset<8> pli_bits((param->getId()) + // ParamId (6)
@@ -309,7 +322,7 @@ vector<Segment*> SegmentEncoder::encode(MotObject& object)
 	return segments;
 }
 
-vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject*> objects, vector<DirectoryParameter*> parameters)
+vector<Segment*> SegmentEncoder::encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters)
 {
 	vector<Segment*> segments;
 
@@ -318,21 +331,21 @@ vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject*> obje
 
 	// directory entries
 	vector<unsigned char> directory_entries_data;
-	for(MotObject* object : objects)
+	for(MotObject object : objects)
 	{
 		vector<unsigned char> header_data;
-		header_data = header_data + object->getName().encode();
-		for(HeaderParameter* param : object->getParameters())
+		header_data = header_data + object.getName().encode();
+		for(HeaderParameter* param : object.getParameters())
 		{
 			header_data = header_data + param->encode();
 		}
-		bitset<56> core_header_bits(object->getType().subtype + // content subtype (9)
-								   (object->getType().type << 9) + // content type (6))
-								   (header_data.size() << 15) + // header size (13)
-								   (object->getBody().size() << 28)); // body size (28)
+		bitset<56> core_header_bits(object.getType().subtype + // content subtype (9)
+					   (object.getType().type << 9) + // content type (6))
+					   (header_data.size() << 15) + // header size (13)
+					   (object.getBody().size() << 28)); // body size (28)
 		vector<unsigned char> core_header_data = bits_to_bytes(core_header_bits);
 		header_data.insert(header_data.begin(), core_header_data.begin(), core_header_data.end());
-		vector<unsigned char> transport_id_data = bits_to_bytes(bitset<16>(object->getTransportId()));
+		vector<unsigned char> transport_id_data = bits_to_bytes(bitset<16>(object.getTransportId()));
 		header_data.insert(header_data.begin(), transport_id_data.begin(), transport_id_data.end());
 		directory_entries_data = directory_entries_data + header_data;
 	}
@@ -365,15 +378,14 @@ vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject*> obje
 	}
 
 	// segment up the objects
-	for(MotObject* object : objects)
+	for(MotObject object : objects)
 	{
 		// segment the data
-		vector<vector<unsigned char> > chunked_segments = chunk_segments(object->getBody(), strategy->getSegmentSize(*object));
+		vector<vector<unsigned char> > chunked_segments = chunk_segments(object.getBody(), strategy->getSegmentSize(object));
 		for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 		{
-			segments.push_back(
-					new Segment(object->getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
-							(distance(i, --chunked_segments.end()) == 0) ? true : false));
+			segments.push_back(new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
+						(distance(i, --chunked_segments.end()) == 0) ? true : false));
 		}
 	}
 
@@ -408,7 +420,7 @@ int ConstantSizeSegmentationStrategy::getSegmentSize() {
 	return size;
 }
 
-int ConstantSizeSegmentationStrategy::getSegmentSize(MotObject& object) {
+int ConstantSizeSegmentationStrategy::getSegmentSize(const MotObject &object) {
 	return size;
 }
 

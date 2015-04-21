@@ -1,11 +1,6 @@
 .PHONY : clean
 
-UNAME := $(shell uname)
-ifeq ($(UNAME), Windows_NT)
-	LIB = mot.dll
-else
-	LIB = mot.so
-endif
+LIB = libmot.a
 
 lib: 
 	make -C src

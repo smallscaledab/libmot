@@ -98,14 +98,14 @@ namespace mot {
 
 		virtual ~HeaderParameter() = 0;
 
-		virtual std::vector<unsigned char> encode() = 0;
+		virtual std::vector<unsigned char> encode() const = 0;
 
 		bool operator== (const HeaderParameter &other)
 		{
 			return equals(other);
 		}
 
-		int getId() { return id; };
+		int getId() const { return id; };
 
 	protected:
 
@@ -139,9 +139,9 @@ namespace mot {
 
 	public:
 
-		ContentName(std::string name, Charset charset = Charsets::ISO::Latin1);
+		ContentName(const std::string &name, Charset charset = Charsets::ISO::Latin1);
 
-		vector<unsigned char> encode();
+		vector<unsigned char> encode() const;
 
 	protected:
 
@@ -160,9 +160,9 @@ namespace mot {
 
 	public:
 
-		MimeType(std::string mimetype);
+		MimeType(const std::string &mimetype);
 
-		vector<unsigned char> encode();
+		vector<unsigned char> encode() const;
 
 	protected:
 
@@ -181,7 +181,7 @@ namespace mot {
 
 		RelativeExpiration(long offset);
 
-		vector<unsigned char> encode();
+		vector<unsigned char> encode() const;
 
 	protected:
 
@@ -200,7 +200,7 @@ namespace mot {
 
 		AbsoluteExpiration(long timepoint);
 
-		vector<unsigned char> encode();
+		vector<unsigned char> encode() const;
 
 	protected:
 
@@ -225,7 +225,7 @@ namespace mot {
 
 		Compression(CompressionType type);
 
-		vector<unsigned char> encode();
+		vector<unsigned char> encode() const;
 
 	protected:
 
@@ -243,7 +243,7 @@ namespace mot {
 
 		Priority(unsigned short int priority);
 
-		vector<unsigned char> encode();
+		vector<unsigned char> encode() const;
 
 	protected:
 
@@ -263,7 +263,7 @@ namespace mot {
 
 		virtual ~DirectoryParameter() = 0;
 
-		virtual std::vector<unsigned char> encode() = 0;
+		virtual std::vector<unsigned char> encode() const = 0;
 
 		bool operator== (const DirectoryParameter &other)
 		{
@@ -293,7 +293,7 @@ namespace mot {
 
 		bool equals(const DirectoryParameter& a) const { return true; }
 
-		vector<unsigned char> encode();
+		vector<unsigned char> encode() const;
 
 	};
 
@@ -375,19 +375,22 @@ namespace mot {
 
 	public:
 
-		MotObject(int transportId, ContentName name, std::vector<unsigned char> body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, ContentName &name, const std::vector<unsigned char> & body, ContentType type = ContentTypes::General::Object_Transfer);
 
-		MotObject(int transportId, std::string name, std::vector<unsigned char> body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, std::string &name, const std::vector<unsigned char> &body, ContentType type = ContentTypes::General::Object_Transfer);
 
-		MotObject(int transportId, ContentName name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, const char *name, const std::vector<unsigned char> &body, ContentType type = ContentTypes::General::Object_Transfer);
 
-		MotObject(int transportId, std::string name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, ContentName &name, ContentType type = ContentTypes::General::Object_Transfer);
 
+		MotObject(int transportId, std::string &name, ContentType type = ContentTypes::General::Object_Transfer);
+
+		MotObject(int transportId, const char *name, ContentType type = ContentTypes::General::Object_Transfer);
 
 		/**
 		 * @brief Adds a parameter
 		 */
-		void addParameter(HeaderParameter* parameter);
+		void addParameter(HeaderParameter *parameter);
 
 		/**
 		 * @brief Returns all parameters
@@ -402,13 +405,13 @@ namespace mot {
 
 		void removeParameter(HeaderParameter& parameter);
 
-		int getTransportId() { return transportId; };
+		int getTransportId() const { return transportId; };
 
-		ContentName getName() { return name; };
+		ContentName getName() const { return name; };
 
-		ContentType getType() { return type; };
+		ContentType getType() const { return type; };
 
-		std::vector<unsigned char> getBody() { return body; };
+		std::vector<unsigned char> getBody() const { return body; };
 
 	private:
 
@@ -448,21 +451,21 @@ namespace mot {
 		 * @param type Segment data type
 		 * @param last True if this is the last segment of this type (header or body)
 		 */
-		Segment(int transportId, std::vector<unsigned char> data, int index, int repetition, SegmentDatagroupType type, bool last = false);
+		Segment(int transportId, const std::vector<unsigned char> & data, int index, int repetition, SegmentDatagroupType type, bool last = false);
 
-		std::vector<unsigned char> encode();
+		std::vector<unsigned char> encode() const;
 
-		int getIndex() { return index; };
+		int getIndex() const { return index; };
 
-		int getRepetition() { return repetition; };
+		int getRepetition() const { return repetition; };
 
-		SegmentDatagroupType getType() { return type; };
+		SegmentDatagroupType getType() const { return type; };
 
-		bool isLast() { return last; };
+		bool isLast() const { return last; };
 
-		int getSize() { return data.size(); };
+		int getSize() const { return data.size(); };
 
-		int getTransportId() { return transportId; };
+		int getTransportId() const { return transportId; };
 
 	private:
 
@@ -487,7 +490,7 @@ namespace mot {
 
 		virtual int getSegmentSize() = 0;
 
-		virtual int getSegmentSize(MotObject& object) = 0;
+		virtual int getSegmentSize(const MotObject &object) = 0;
 	};
 
 	/**
@@ -509,7 +512,7 @@ namespace mot {
 
 		int getSegmentSize();
 
-		int getSegmentSize(MotObject& object);
+		int getSegmentSize(const MotObject &object);
 
 	private:
 
@@ -537,12 +540,14 @@ namespace mot {
 		 * Segment a single MOT object in MOT Header Mode
 		 * @param object MOT object to encode
 		 */
-		vector<Segment*> encode(MotObject& object);
+		vector<Segment*> encode(const MotObject &object);
 
 		/**
 		 * Segment s directory of MOT objects in MOT directory Mode
 		 */
-		vector<Segment*> encode(int transportId, vector<MotObject*> objects, vector<DirectoryParameter*> parameters = vector<DirectoryParameter*>());
+		vector<Segment*> encode(int transportId, const vector<MotObject> &objects);
+
+		vector<Segment*> encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters);
 
 	private:
 
