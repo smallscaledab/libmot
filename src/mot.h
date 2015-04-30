@@ -89,7 +89,28 @@ namespace mot {
 
 	}
 
-	class HeaderParameter
+    class Parameter
+    {
+
+    public:
+
+		Parameter(int id);
+
+		virtual ~Parameter() = 0;
+
+        std::vector<unsigned char> encode();
+
+		virtual std::vector<unsigned char> encodeData() const = 0;
+
+		int getId() const { return id; };
+
+    private:
+
+        int id;
+
+    };
+
+	class HeaderParameter : public Parameter
 	{
 
 	public:
@@ -98,22 +119,15 @@ namespace mot {
 
 		virtual ~HeaderParameter() = 0;
 
-		virtual std::vector<unsigned char> encode() const = 0;
-
 		bool operator== (const HeaderParameter &other)
 		{
 			return equals(other);
 		}
 
-		int getId() const { return id; };
 
 	protected:
 
 		virtual bool equals(const HeaderParameter& a) const = 0;
-
-	private:
-
-		int id;
 
 	};
 
@@ -141,7 +155,7 @@ namespace mot {
 
 		ContentName(const std::string &name, Charset charset = Charsets::ISO::Latin1);
 
-		vector<unsigned char> encode() const;
+		vector<unsigned char> encodeData() const;
 
 	protected:
 
@@ -162,7 +176,7 @@ namespace mot {
 
 		MimeType(const std::string &mimetype);
 
-		vector<unsigned char> encode() const;
+		vector<unsigned char> encodeData() const;
 
 	protected:
 
@@ -181,7 +195,7 @@ namespace mot {
 
 		RelativeExpiration(long offset);
 
-		vector<unsigned char> encode() const;
+		vector<unsigned char> encodeData() const;
 
 	protected:
 
@@ -200,7 +214,7 @@ namespace mot {
 
 		AbsoluteExpiration(long timepoint);
 
-		vector<unsigned char> encode() const;
+		vector<unsigned char> encodeData() const;
 
 	protected:
 
@@ -225,7 +239,7 @@ namespace mot {
 
 		Compression(CompressionType type);
 
-		vector<unsigned char> encode() const;
+		vector<unsigned char> encodeData() const;
 
 	protected:
 
@@ -243,7 +257,7 @@ namespace mot {
 
 		Priority(unsigned short int priority);
 
-		vector<unsigned char> encode() const;
+		vector<unsigned char> encodeData() const;
 
 	protected:
 
@@ -254,7 +268,7 @@ namespace mot {
 		unsigned short int priority;
 	};
 
-	class DirectoryParameter
+	class DirectoryParameter : public Parameter
 	{
 
 	public:
@@ -263,22 +277,14 @@ namespace mot {
 
 		virtual ~DirectoryParameter() = 0;
 
-		virtual std::vector<unsigned char> encode() const = 0;
-
 		bool operator== (const DirectoryParameter &other)
 		{
 			return equals(other);
 		}
 
-		int getId() { return id; };
-
 	protected:
 
 		virtual bool equals(const DirectoryParameter& a) const = 0;
-
-	private:
-
-		int id;
 
 	};
 
@@ -293,7 +299,7 @@ namespace mot {
 
 		bool equals(const DirectoryParameter& a) const { return true; }
 
-		vector<unsigned char> encode() const;
+		vector<unsigned char> encodeData() const;
 
 	};
 
@@ -318,7 +324,7 @@ namespace mot {
 
 		static SequentialTransportIdGenerator* getInstance()
 		{
-			if(!instance) instance = new SequentialTransportIdGenerator;
+			if(!instance) instance = new SequentialTransportIdGenerator(initial);
 			return instance;
 		}
 
@@ -332,7 +338,8 @@ namespace mot {
 
 	private:
 
-		SequentialTransportIdGenerator() : last(initial-1) { };
+		SequentialTransportIdGenerator(int initial) : last(initial-1) {
+ };
 
 		static SequentialTransportIdGenerator* instance;
 
@@ -410,6 +417,8 @@ namespace mot {
 		ContentName getName() const { return name; };
 
 		ContentType getType() const { return type; };
+
+        std::vector<unsigned char> encodeHeader() const;
 
 		std::vector<unsigned char> getBody() const { return body; };
 

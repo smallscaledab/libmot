@@ -63,6 +63,29 @@ vector<HeaderParameter*> MotObject::getParameterByType()
 	return result;
 }
 
+vector<unsigned char> MotObject::encodeHeader() const
+{
+    vector<unsigned char> data;
+
+    // encode the parameters
+    vector<unsigned char> header_data;
+    for(HeaderParameter* param : this->getParameters())
+    {
+        header_data = header_data + param->encode();
+    }
+
+    // assemble the core
+    bitset<56> core_header_bits(this->getType().subtype + // content subtype (9)
+                   (this->getType().type << 9) + // content type (6))
+                   ((header_data.size() + 7) << 15) + // header size (13)
+                   (this->getBody().size() << 28)); // body size (28)
+
+    data = data + bits_to_bytes(core_header_bits);
+    data = data + header_data; 
+
+    return data;	
+}
+
 template <typename T>
 bool MotObject::hasParameter()
 {
@@ -81,8 +104,61 @@ bool MotObject::hasParameter()
 //	parameters.erase(find(parameters.begin(), parameters.end(), parameter));
 //};
 
+Parameter::Parameter(int id)
+    : id(id)
+{ }
+
+Parameter::~Parameter()
+{ }
+
+vector<unsigned char> Parameter::encode()
+{
+    vector<unsigned char> data;
+    vector<unsigned char> encoded_param_data = this->encodeData();
+
+    if(encoded_param_data.size() == 0)
+    {
+        bitset<8> pli_bits((this->getId()) + // ParamId (6)
+                          (0 << 6)); // PLI=0 (2)
+        data = data + bits_to_bytes(pli_bits);
+    }
+    else if(encoded_param_data.size() == 1)
+    {
+        bitset<8> pli_bits((this->getId()) + // ParamId (6)
+                          (1 << 6)); // PLI=1 (2)
+        data = data + bits_to_bytes(pli_bits);
+    }
+    else if(encoded_param_data.size() == 4)
+    {
+        bitset<8> pli_bits((this->getId()) + // ParamId (6)
+                          (2 << 6)); // PLI=2 (2)
+        data = data + bits_to_bytes(pli_bits);
+    }
+    else if(encoded_param_data.size() <= 127)
+    {
+        bitset<16> pli_bits(encoded_param_data.size() + // DataFieldLength (7)
+                           (0 << 7) + // Ext=0
+                           (this->getId() << 8) + // ParamId (6)
+                           (3 << 14)); // PLI=3 (2)
+        data = data + bits_to_bytes(pli_bits);
+    }
+    else
+    {
+        bitset<24> pli_bits(encoded_param_data.size() + // DataFieldLength (15)
+                           (1 << 15) + // Ext=1
+                           (this->getId() << 16) + // ParamId (6)
+                           (3 << 22)); // PLI=3 (2)
+        data = data + bits_to_bytes(pli_bits);
+    }
+
+    data = data + encoded_param_data;
+    return data; 
+}
+
+
+
 HeaderParameter::HeaderParameter(int id)
-	: id(id)
+	: Parameter(id)
 { }
 
 HeaderParameter::~HeaderParameter()
@@ -99,7 +175,7 @@ bool ContentName::equals(const HeaderParameter& other) const
 			this->name == that->name);
 }
 
-vector<unsigned char> ContentName::encode() const
+vector<unsigned char> ContentName::encodeData() const
 {
 	bitset<8> bits(charset << 4); // charset(4)
 
@@ -119,7 +195,7 @@ bool MimeType::equals(const HeaderParameter& other) const
     return that != nullptr && (this->mimetype == that->mimetype);
 }
 
-vector<unsigned char> MimeType::encode() const
+vector<unsigned char> MimeType::encodeData() const
 {
 	vector<unsigned char> bytes;
 	copy(mimetype.begin(), mimetype.end(), back_inserter(bytes));
@@ -136,7 +212,7 @@ bool RelativeExpiration::equals(const HeaderParameter& other) const
     return that != nullptr && (this->offset == that->offset);
 }
 
-vector<unsigned char> RelativeExpiration::encode() const
+vector<unsigned char> RelativeExpiration::encodeData() const
 {
 	if(offset < (127 * 60)) // < 127m
 	{
@@ -176,7 +252,7 @@ bool AbsoluteExpiration::equals(const HeaderParameter& other) const
     return that != nullptr && (this->timepoint == that->timepoint);
 }
 
-vector<unsigned char> AbsoluteExpiration::encode() const
+vector<unsigned char> AbsoluteExpiration::encodeData() const
 {
 	return timepoint_to_encoded_utc(timepoint);
 }
@@ -185,7 +261,7 @@ Compression::Compression(CompressionType type)
 	: HeaderParameter(17), type(type)
 { }
 
-vector<unsigned char> Compression::encode() const
+vector<unsigned char> Compression::encodeData() const
 {
 	bitset<8> bits(type);
 	return bits_to_bytes(bits);
@@ -201,7 +277,7 @@ Priority::Priority(unsigned short int priority)
 	: HeaderParameter(10), priority(priority)
 { }
 
-vector<unsigned char> Priority::encode() const
+vector<unsigned char> Priority::encodeData() const
 {
 	bitset<8> bits(priority);
 	return bits_to_bytes(bits);
@@ -214,7 +290,7 @@ bool Priority::equals(const HeaderParameter& other) const
 }
 
 DirectoryParameter::DirectoryParameter(int id)
-	: id(id)
+	: Parameter(id)
 { }
 
 DirectoryParameter::~DirectoryParameter()
@@ -224,7 +300,7 @@ SortedHeaderInformation::SortedHeaderInformation() :
 	DirectoryParameter(0)
 { }
 
-vector<unsigned char> SortedHeaderInformation::encode() const
+vector<unsigned char> SortedHeaderInformation::encodeData() const
 {
 	return vector<unsigned char>();
 }
@@ -252,55 +328,7 @@ vector<Segment*> SegmentEncoder::encode(const MotObject &object)
 	int chunk_size = strategy->getSegmentSize(object);
 
 	// segment header data
-	vector<unsigned char> header_data;
-	for(HeaderParameter* param : object.getParameters())
-	{
-		vector<unsigned char> encoded_param_data = param->encode();
-
-		if(encoded_param_data.size() == 0)
-		{
-			bitset<8> pli_bits((param->getId()) + // ParamId (6)
-							  (0 << 6)); // PLI=0 (2)
-			header_data = header_data + bits_to_bytes(pli_bits);
-		}
-		else if(encoded_param_data.size() == 1)
-		{
-			bitset<8> pli_bits((param->getId()) + // ParamId (6)
-							  (1 << 6)); // PLI=1 (2)
-			header_data = header_data + bits_to_bytes(pli_bits);
-		}
-		else if(encoded_param_data.size() == 4)
-		{
-			bitset<8> pli_bits((param->getId()) + // ParamId (6)
-							  (2 << 6)); // PLI=2 (2)
-			header_data = header_data + bits_to_bytes(pli_bits);
-		}
-		else if(encoded_param_data.size() <= 127)
-		{
-			bitset<16> pli_bits(encoded_param_data.size() + // DataFieldLength (7)
-							   (0 << 7) + // Ext=0
-							   (param->getId() << 8) + // ParamId (6)
-							   (3 << 14)); // PLI=3 (2)
-			header_data = header_data + bits_to_bytes(pli_bits);
-		}
-		else
-		{
-			bitset<24> pli_bits(encoded_param_data.size() + // DataFieldLength (15)
-							   (1 << 15) + // Ext=1
-							   (param->getId() << 16) + // ParamId (6)
-							   (3 << 22)); // PLI=3 (2)
-			header_data = header_data + bits_to_bytes(pli_bits);
-		}
-
-		// add param data
-		header_data = header_data + encoded_param_data;
-	}
-	bitset<56> core_header_bits(object.getType().subtype + // content subtype (9)
-							   (object.getType().type << 9) + // content type (6))
-							   (header_data.size() << 15) + // header size (13)
-							   (object.getBody().size() << 28)); // body size (28)
-	vector<unsigned char> core_header_data = bits_to_bytes(core_header_bits);
-	header_data.insert(header_data.begin(), core_header_data.begin(), core_header_data.end());
+	vector<unsigned char> header_data = object.encodeHeader();
 	vector<vector<unsigned char> > chunked_segments = chunk_segments(header_data, chunk_size);
 	for (auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
@@ -333,21 +361,7 @@ vector<Segment*> SegmentEncoder::encode(int transportId, const vector<MotObject>
 	vector<unsigned char> directory_entries_data;
 	for(MotObject object : objects)
 	{
-		vector<unsigned char> header_data;
-		header_data = header_data + object.getName().encode();
-		for(HeaderParameter* param : object.getParameters())
-		{
-			header_data = header_data + param->encode();
-		}
-		bitset<56> core_header_bits(object.getType().subtype + // content subtype (9)
-					   (object.getType().type << 9) + // content type (6))
-					   (header_data.size() << 15) + // header size (13)
-					   (object.getBody().size() << 28)); // body size (28)
-		vector<unsigned char> core_header_data = bits_to_bytes(core_header_bits);
-		header_data.insert(header_data.begin(), core_header_data.begin(), core_header_data.end());
-		vector<unsigned char> transport_id_data = bits_to_bytes(bitset<16>(object.getTransportId()));
-		header_data.insert(header_data.begin(), transport_id_data.begin(), transport_id_data.end());
-		directory_entries_data = directory_entries_data + header_data;
+		directory_entries_data = directory_entries_data + bits_to_bytes(bitset<16>(object.getTransportId())) + object.encodeHeader();
 	}
 
 	// directory extension
@@ -356,7 +370,7 @@ vector<Segment*> SegmentEncoder::encode(int transportId, const vector<MotObject>
 	{
 		directory_extension_data = directory_extension_data + parameter->encode();
 	}
-	directory_extension_data = directory_extension_data + bits_to_bytes(bitset<16>(directory_extension_data.size()));
+	directory_extension_data = bits_to_bytes(bitset<16>(directory_extension_data.size())) + directory_extension_data;
 
 	// calculate directory object size
 	int directory_size = 4 + 2 + 5 + directory_extension_data.size() + directory_entries_data.size();
@@ -364,7 +378,7 @@ vector<Segment*> SegmentEncoder::encode(int transportId, const vector<MotObject>
 	// put it all together
 	directory_data = directory_data + bits_to_bytes(bitset<32>(directory_size));
 	directory_data = directory_data + bits_to_bytes(bitset<16>(objects.size()));
-	directory_data = directory_data + bits_to_bytes(bitset<40>());
+	directory_data = directory_data + bits_to_bytes(bitset<40>()); // 24 bits datacarouselperiod + 16 bits segment size
 	directory_data = directory_data + directory_extension_data;
 	directory_data = directory_data + directory_entries_data;
 

@@ -23,7 +23,7 @@ TEST_CASE( "MOT encoding tests", "[mot]" ) {
 		vector<Segment*> segments = encoder.encode(o);
 
 		REQUIRE(segments.size() == 2);
-		REQUIRE(bytes_to_hex(segments.at(0)->encode()) == "00 20 00 00 00 40 0C 82 00 CC 0B 40 54 65 73 74 4F 62 6A 65 63 74 D0 0A 74 65 73 74 2F 74 68 69 6E 67");
+		REQUIRE(bytes_to_hex(segments.at(0)->encode()) == "00 20 00 00 00 40 10 02 00 CC 0B 40 54 65 73 74 4F 62 6A 65 63 74 D0 0A 74 65 73 74 2F 74 68 69 6E 67");
 		REQUIRE(bytes_to_hex(segments.at(1)->encode()) == "00 04 3D 3D 3D 3D");
 	}
 
@@ -32,6 +32,7 @@ TEST_CASE( "MOT encoding tests", "[mot]" ) {
 		vector<unsigned char> bytes;
 		copy(data.begin(), data.end(), back_inserter(bytes));
 
+        SequentialTransportIdGenerator::initial = 8124;
 		SequentialTransportIdGenerator* id = SequentialTransportIdGenerator::getInstance();
 		vector<MotObject> objects;
 
@@ -56,10 +57,13 @@ TEST_CASE( "MOT encoding tests", "[mot]" ) {
 
 		SegmentEncoder encoder;
 		vector<Segment*> segments = encoder.encode(id->next(), objects, params);
-		for(Segment* segment : segments)
-		{
-			cout << "segment: " << bytes_to_hex(segment->encode()) << endl;
-		}
+
+        REQUIRE(segments.size() == 4);
+		REQUIRE(bytes_to_hex(segments.at(0)->encode()) == "00 66 00 00 00 66 00 03 00 00 00 00 00 00 01 00 00 01 00 00 00 50 0D 82 00 CC 06 40 46 69 72 73 74 D0 0A 74 65 73 74 2F 74 68 69 6E 67 00 02 00 00 00 50 0E 02 00 CC 07 40 53 65 63 6F 6E 64 D0 0A 74 65 73 74 2F 74 68 69 6E 67 00 03 00 00 00 50 0D 82 00 CC 06 40 54 68 69 72 64 D0 0A 74 65 73 74 2F 74 68 69 6E 67");
+		REQUIRE(bytes_to_hex(segments.at(1)->encode()) == "00 05 2A 2A 2A 2A 2A");
+		REQUIRE(bytes_to_hex(segments.at(2)->encode()) == "00 05 2A 2A 2A 2A 2A");
+		REQUIRE(bytes_to_hex(segments.at(3)->encode()) == "00 05 2A 2A 2A 2A 2A");
+
 	}
 
 }
