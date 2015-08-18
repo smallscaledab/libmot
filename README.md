@@ -39,3 +39,7 @@ int main() {
     return  0;
 }
 ```
+
+# building
+
+automake --add-missing

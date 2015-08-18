@@ -134,7 +134,8 @@ namespace mot {
 	typedef int Charset;
 	namespace Charsets
 	{
-		namespace EBU
+
+        namespace EBU
 		{
 			const Charset Latin = 0;
 			const Charset Latin_Common_Core = 1;
@@ -322,7 +323,7 @@ namespace mot {
 
 	public:
 
-		static SequentialTransportIdGenerator* getInstance()
+		static SequentialTransportIdGenerator* getInstance(int initial = 1)
 		{
 			if(!instance) instance = new SequentialTransportIdGenerator(initial);
 			return instance;
@@ -330,7 +331,6 @@ namespace mot {
 
 		int next();
 
-		static int initial;
 
 	protected:
 
@@ -338,15 +338,12 @@ namespace mot {
 
 	private:
 
-		SequentialTransportIdGenerator(int initial) : last(initial-1) {
- };
+		SequentialTransportIdGenerator(int initial);
 
 		static SequentialTransportIdGenerator* instance;
 
 		int last;
-
-	};
-	int SequentialTransportIdGenerator::initial = 0;
+    };
 
 	class RandomTransportIdGenerator : public TransportIdGenerator
 	{
@@ -549,14 +546,14 @@ namespace mot {
 		 * Segment a single MOT object in MOT Header Mode
 		 * @param object MOT object to encode
 		 */
-		vector<Segment*> encode(const MotObject &object);
+		vector<Segment> encode(const MotObject &object);
 
 		/**
 		 * Segment s directory of MOT objects in MOT directory Mode
 		 */
-		vector<Segment*> encode(int transportId, const vector<MotObject> &objects);
+		vector<Segment> encode(int transportId, const vector<MotObject> &objects);
 
-		vector<Segment*> encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters);
+		vector<Segment> encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters);
 
 	private:
 

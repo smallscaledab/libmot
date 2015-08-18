@@ -321,9 +321,9 @@ SegmentEncoder::SegmentEncoder(SegmentationStrategy* strategy)
 	: strategy(strategy)
 { }
 
-vector<Segment*> SegmentEncoder::encode(const MotObject &object)
+vector<Segment> SegmentEncoder::encode(const MotObject &object)
 {
-	vector<Segment*> segments;
+	vector<Segment> segments;
 	
 	int chunk_size = strategy->getSegmentSize(object);
 
@@ -333,7 +333,7 @@ vector<Segment*> SegmentEncoder::encode(const MotObject &object)
 	for (auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
 		segments.push_back(
-				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Header,
+				Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Header,
 						(i == (chunked_segments.end() - 1)) ? true : false));
 	}
 
@@ -343,16 +343,16 @@ vector<Segment*> SegmentEncoder::encode(const MotObject &object)
 	for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
 		segments.push_back(
-				new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
+				Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
 						(i == (chunked_segments.end() - 1)) ? true : false));
 	}
 
 	return segments;
 }
 
-vector<Segment*> SegmentEncoder::encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters)
+vector<Segment> SegmentEncoder::encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters)
 {
-	vector<Segment*> segments;
+	vector<Segment> segments;
 
 	// encode the directory
 	vector<unsigned char> directory_data;
@@ -387,7 +387,7 @@ vector<Segment*> SegmentEncoder::encode(int transportId, const vector<MotObject>
 	for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 	{
 		segments.push_back(
-				new Segment(transportId, *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Directory_Uncompressed,
+				Segment(transportId, *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Directory_Uncompressed,
 						(distance(i, (chunked_segments.end() - 1)) == 0) ? true : false));
 	}
 
@@ -398,7 +398,7 @@ vector<Segment*> SegmentEncoder::encode(int transportId, const vector<MotObject>
 		vector<vector<unsigned char> > chunked_segments = chunk_segments(object.getBody(), strategy->getSegmentSize(object));
 		for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
 		{
-			segments.push_back(new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
+			segments.push_back(Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
 						(distance(i, --chunked_segments.end()) == 0) ? true : false));
 		}
 	}
@@ -444,6 +444,11 @@ int SequentialTransportIdGenerator::next()
 }
 
 SequentialTransportIdGenerator* SequentialTransportIdGenerator::instance;
+
+SequentialTransportIdGenerator::SequentialTransportIdGenerator(int initial) 
+    : last(initial-1) 
+{}
+
 
 int RandomTransportIdGenerator::next()
 {
