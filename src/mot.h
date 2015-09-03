@@ -8,86 +8,18 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "charsets.h"
 #include "util.h"
 
 using namespace std;
 
 namespace mot {
 
-	vector<unsigned char> timepoint_to_encoded_utc(int timepoint);
-
-	int timepoint_to_mjd(int timepoint);
-
 	struct ContentType
 	{
 		int type;
 		int subtype;
 	};
-	namespace ContentTypes
-	{
-		// general data
-		namespace General
-		{
-			const ContentType Object_Transfer = {0, 0};
-			const ContentType MIME_HTTP = {0, 1};
-		}
-
-		// text
-		namespace Text
-		{
-			const ContentType ASCII = {1, 0};
-			const ContentType ISO = {1, 1};
-			const ContentType HTML = {1, 2};
-		}
-
-		// image
-		namespace Image
-		{
-			const ContentType GIF = {2, 0};
-			const ContentType JFIF = {2, 1};
-			const ContentType BMP = {2, 2};
-			const ContentType PNG = {2, 3};
-		}
-
-		// audio
-		namespace Audio
-		{
-			const ContentType MPEG1_L1 = {3, 0};
-			const ContentType MPEG1_L2 = {3, 1};
-			const ContentType MPEG1_L3 = {3, 2};
-			const ContentType MPEG2_L1 = {3, 3};
-			const ContentType MPEG2_L2 = {3, 4};
-			const ContentType MPEG2_L3 = {3, 5};
-			const ContentType PCM = {3, 6};
-			const ContentType AIFF = {3, 7};
-			const ContentType ATRAC = {3, 8};
-			const ContentType ATRAC2 = {3, 9};
-			const ContentType MPEG4 = {3, 10};
-		}
-
-		// video
-		namespace Video
-		{
-			const ContentType MPEG1 = {4, 0};
-			const ContentType MPEG2 = {4, 1};
-			const ContentType MPEG4 = {4, 2};
-			const ContentType H263 = {4, 3};
-		}
-
-		// MOT
-		namespace MOT
-		{
-			const ContentType Update = {5, 0};
-		}
-
-		// system
-		namespace System
-		{
-			const ContentType MHEG = {6, 0};
-			const ContentType Java = {6, 1};
-		}
-
-	}
 
     class Parameter
     {
@@ -130,24 +62,6 @@ namespace mot {
 		virtual bool equals(const HeaderParameter& a) const = 0;
 
 	};
-
-	typedef int Charset;
-	namespace Charsets
-	{
-
-        namespace EBU
-		{
-			const Charset Latin = 0;
-			const Charset Latin_Common_Core = 1;
-			const Charset Latin_Core = 2;
-		}
-		namespace ISO
-		{
-			const Charset Latin2 = 3;
-			const Charset Latin1 = 4;
-			const Charset IEC_10646 = 15;
-		}
-	}
 
 	class ContentName : public HeaderParameter
 	{
@@ -379,17 +293,17 @@ namespace mot {
 
 	public:
 
-		MotObject(int transportId, ContentName &name, const std::vector<unsigned char> & body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, ContentName &name, const std::vector<unsigned char> & body, ContentType type);
 
-		MotObject(int transportId, std::string &name, const std::vector<unsigned char> &body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, std::string &name, const std::vector<unsigned char> &body, ContentType type);
 
-		MotObject(int transportId, const char *name, const std::vector<unsigned char> &body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, const char *name, const std::vector<unsigned char> &body, ContentType type);
 
-		MotObject(int transportId, ContentName &name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, ContentName &name, ContentType type);
 
-		MotObject(int transportId, std::string &name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, std::string &name, ContentType type);
 
-		MotObject(int transportId, const char *name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, const char *name, ContentType type);
 
 		/**
 		 * @brief Adds a parameter

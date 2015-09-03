@@ -3,7 +3,8 @@
 #include <vector>
 #include <iostream>
 
-#include <mot.h>
+#include "../src/mot.h"
+#include "../src/contenttypes.h"
 
 #include "catch.hpp"
 
@@ -17,7 +18,7 @@ TEST_CASE( "MOT encoding tests", "[mot]" ) {
 		vector<unsigned char> bytes;
 		copy(data.begin(), data.end(), back_inserter(bytes));
 
-		SequentialTransportIdGenerator* id = SequentialTransportIdGenerator::getInstance();
+		SequentialTransportIdGenerator* id = SequentialTransportIdGenerator::getInstance(8000);
 		MotObject o(id->next(), "TestObject", bytes, ContentTypes::Text::ASCII);
 		o.addParameter(new MimeType("test/thing"));
 		SegmentEncoder encoder;

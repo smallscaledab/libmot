@@ -1,4 +1,5 @@
 lib_LIBRARIES = libmot.a
 
-libmot_a_SOURCES = mot.cpp mot.h \
-                   util.h 
+libmot_a_SOURCES = util.h \
+                   common.cpp common.h \
+                   mot.cpp mot.h
