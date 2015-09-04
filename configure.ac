@@ -25,7 +25,7 @@ case $host in
     AC_SUBST([BUILD_HOST], ["--host i386-mingw32msvc"])
 esac
 
-CXXFLAGS="$CXXFLAGS -std=c++11 -stdlib=libc++"
+CXXFLAGS="$CXXFLAGS -std=c++11"
 
 # Checks for programs.
 AC_PROG_CXX

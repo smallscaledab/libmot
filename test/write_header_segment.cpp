@@ -17,7 +17,7 @@ int main()
     MotObject o(id->next(), "TestObject", bytes, ContentTypes::Text::ASCII);
     o.addParameter(new MimeType("test/thing"));
     SegmentEncoder encoder;
-    vector<Segment> segments = encoder.encode(o);
-    cout << segments.at(0).encode();
+    vector<Segment*> segments = encoder.encode(o);
+    cout << segments.at(0)->encode();
     return 0;
 }

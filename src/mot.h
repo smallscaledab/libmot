@@ -460,14 +460,14 @@ namespace mot {
 		 * Segment a single MOT object in MOT Header Mode
 		 * @param object MOT object to encode
 		 */
-		vector<Segment> encode(const MotObject &object);
+		vector<Segment*> encode(MotObject object);
 
 		/**
 		 * Segment s directory of MOT objects in MOT directory Mode
 		 */
-		vector<Segment> encode(int transportId, const vector<MotObject> &objects);
+		vector<Segment*> encode(int transportId, vector<MotObject> objects);
 
-		vector<Segment> encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters);
+		vector<Segment*> encode(int transportId, vector<MotObject> objects, vector<DirectoryParameter*> parameters);
 
 	private:
 
