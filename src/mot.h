@@ -15,6 +15,10 @@ using namespace std;
 
 namespace mot {
 
+	int timepoint_to_mjd(int timepoint);
+
+	vector<unsigned char> timepoint_to_encoded_utc(int timepoint);
+
 	struct ContentType
 	{
 		int type;

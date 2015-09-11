@@ -1,8 +1,8 @@
 #include <vector>
 #include <iostream>
 
-#include "../src/mot.h"
-#include "../src/contenttypes.h"
+#include <mot.h>
+#include <contenttypes.h>
 
 using namespace mot;
 using namespace std;
@@ -19,5 +19,9 @@ int main()
     SegmentEncoder encoder;
     vector<Segment*> segments = encoder.encode(o);
     cout << segments.at(0)->encode();
+    for(Segment* segment : segments)
+    {
+        delete segment;
+    }
     return 0;
 }

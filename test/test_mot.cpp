@@ -3,8 +3,8 @@
 #include <vector>
 #include <iostream>
 
-#include "../src/mot.h"
-#include "../src/contenttypes.h"
+#include <mot.h> 
+#include <contenttypes.h>
 
 #include "catch.hpp"
 

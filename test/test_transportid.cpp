@@ -2,9 +2,9 @@
 
 #include <vector>
 #include <iostream>
+#include <mot.h>
 
 #include "catch.hpp"
-#include "mot.h"
 
 using namespace mot;
 using namespace std;
