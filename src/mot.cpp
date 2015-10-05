@@ -1,94 +1,76 @@
 #include "mot.h"
 #include "util.h"
 
-#include <algorithm>
 #include <iostream>
-#include <math.h>
 #include <bitset>
 
 using namespace std;
+using namespace std::chrono;
 
 namespace mot
 {
     int timepoint_to_mjd(int timepoint)
     {
-        time_t t = timepoint / 1000;
-
+        time_t t = timepoint;
         struct tm *tm;
         tm = gmtime(&t);
-
-        int day = tm->tm_yday;
-        int month = tm->tm_mon;
+        int day = tm->tm_mday;
+        int month = tm->tm_mon + 1;
         int year = tm->tm_year + 1900;
 
-        int yearp = 0;
-        int monthp = 0;
-        if(month == 1 || month == 2)
-        {
-            yearp = year - 1;
-            monthp = month + 12;
-        } else {
-            yearp = year;
-            monthp = month;
-        }
-
-        int A, B = 0;
-        if  ((year < 1582) ||
-            (year == 1582 && month < 10) ||
-            (year == 1582 && month == 10 && day < 15))
-        {
-            B = 0;
-        } else {
-            A = trunc(yearp / 100.0);
-            B = 2 - A + trunc(A / 4.0);
-        }
-
-        int C = 0;
-        if(yearp < 0)
-        {
-            C = trunc((365.25 * yearp) - 0.75);
-        } else {
-            C = trunc(365.25 * yearp);
-        }
-
-        int D = trunc(30.6001 * (monthp + 1));
-
-        int jd = B + C + D + day + 1720994.5;
-        int mjd = jd - 2400000.5;
-
-        return mjd;
+    return
+        367 * year
+        - 7 * (year + (month + 9) / 12) / 4
+        - 3 * ((year + (month - 9) / 7) / 100 + 1) / 4
+        + 275 * month / 9
+        + day
+        + 1721028
+        - 2400000;
     }
 
     vector<unsigned char> timepoint_to_encoded_utc(int timepoint)
     {
-           if(timepoint == 0) // NOW
-           {
-                   bitset<32> bits(0);
-                   return bits_to_bytes(bits);
-           }
+        if(timepoint == 0) // NOW
+        {
+            bitset<32> bits(0);
+            return bits_to_bytes(bits);
+        }
 
-           if(timepoint / (60000))
-           {
-                   int mjd = timepoint_to_mjd(timepoint);
-                   bitset<48> bits(1  + // validity flag (1)
-                                              (mjd << 1) + // mjd (16)
-                                              (0) + // rfu (2)
-                                              (1 << 19) + // UTC flag
-                                              (timepoint << 20)); // timepoint (27)
-                   return bits_to_bytes(bits);
-           }
-           else
-           {
-                   int mjd = timepoint_to_mjd(timepoint);
-                   bitset<32> bits(1  + // validity flag (1)
-                                              (mjd << 1) + // mjd (16)
-                                              (0) + // rfu (2)
-                                              (1 << 19) + // UTC flag
-                                              ((timepoint / 60000) << 20)); // timepoint (11)
-                   return bits_to_bytes(bits);
-           }
+        if(timepoint / (60))
+        {
+            int mjd = timepoint_to_mjd(timepoint);
+            seconds s(timepoint);
+            hours hh = duration_cast<hours>(s) % 24;
+            minutes mm = duration_cast<minutes>(s % chrono::hours(1));
+            seconds ss = duration_cast<seconds>(s % chrono::minutes(1));
+            milliseconds msec = duration_cast<milliseconds>(s % chrono::seconds(1));
+
+            // only seconds precision right now
+            bitset<16> lower(0 + // millis (10)
+                            (ss.count() << 10)); // seconds (6) 
+            bitset<32> bits((mm.count()) + // minutes (6)
+                           (hh.count() << 6) + // hours (5)
+                           (1 << 11) + // UTC flag (1)
+                           (0 << 12) + // RFU (2)
+                           (mjd << 14) + // MJD (17)
+                           (1 << 31)); // validity (1)
+            return bits_to_bytes(bits) + bits_to_bytes(lower);
+        }
+        else
+        {
+            int mjd = timepoint_to_mjd(timepoint);
+            seconds s(timepoint);
+            hours hh = duration_cast<hours>(s) % 24;
+            minutes mm = duration_cast<minutes>(s % chrono::hours(1));
+            bitset<32> bits((mm.count()) + // minutes (6)
+                           (hh.count() << 6) + // hours (5)
+                           (0 << 11) + // UTC flag (1)
+                           (0 << 12) + // RFU (2)
+                           (mjd << 14) + // MDJ (17)
+                           (1 << 31)); // validity (1)
+            return bits_to_bytes(bits);
+        }
     }
-
 
     MotObject::MotObject(int transportId, ContentName &name, const vector<unsigned char> &body, ContentType type)
         : transportId(transportId), name(name), body(body), type(type)
@@ -431,6 +413,12 @@ namespace mot
 
         return segments;
     }
+
+    vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject> objects)
+    {
+        vector<DirectoryParameter*> parameters;
+        return this->encode(transportId, objects, parameters);
+    }    
 
     vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject> objects, vector<DirectoryParameter*> parameters)
     {
