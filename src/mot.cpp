@@ -1,4 +1,4 @@
-#include "mot.h"
+#include "../include/mot.h"
 #include "util.h"
 
 #include <iostream>

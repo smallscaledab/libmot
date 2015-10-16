@@ -1,7 +1,7 @@
 #ifndef CHARSETS_H_
 #define CHARSETS_H_
 
-#include "mot.h"
+#include "../include/mot.h"
 
 namespace mot
 {
