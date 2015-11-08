@@ -30,21 +30,22 @@ src_libmot_la_LIBADD =
 #
 test_apps = \
     tests/test_header_parameters \
-    tests/test_mot \
+    tests/test_mot_headermode \
+    tests/test_mot_directorymode \
     tests/test_time \
-    tests/test_transportid \
-    tests/write_directory_segments \
-    tests/write_header_segments
+    tests/test_transportid 
 
 tests_test_header_parameters_SOURCES = \
-    tests/test_header_parameters.cpp \
-    tests/catch.hpp
+    tests/test_header_parameters.cpp 
 tests_test_header_parameters_LDADD = src/libmot.la
 
-tests_test_mot_SOURCES = \
-    tests/test_mot.cpp \
-    tests/catch.hpp
-tests_test_mot_LDADD = src/libmot.la
+tests_test_mot_headermode_SOURCES = \
+    tests/test_mot_headermode.cpp 
+tests_test_mot_headermode_LDADD = src/libmot.la
+
+tests_test_mot_directorymode_SOURCES = \
+    tests/test_mot_directorymode.cpp 
+tests_test_mot_directorymode_LDADD = src/libmot.la
 
 tests_test_time_SOURCES = \
     tests/test_time.cpp \
@@ -56,17 +57,10 @@ tests_test_transportid_SOURCES = \
     tests/catch.hpp
 tests_test_transportid_LDADD = src/libmot.la
 
-tests_write_directory_segments_SOURCES = \
-    tests/write_directory_segments.cpp 
-tests_write_directory_segments_LDADD = src/libmot.la
-
-tests_write_header_segments_SOURCES = \
-    tests/write_header_segments.cpp 
-tests_write_header_segments_LDADD = src/libmot.la
-
 check_PROGRAMS = ${test_apps}
 
-#  Run the tests
+#  Run the test cases
 TESTS = $(test_apps)
+XFAIL_TESTS =
 
 EXTRA_DIST	= COPYING NEWS README.md INSTALL.md LICENCE AUTHORS ChangeLog TODO doc

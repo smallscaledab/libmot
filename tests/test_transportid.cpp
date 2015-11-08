@@ -1,24 +1,17 @@
-#define CATCH_CONFIG_MAIN
-
 #include <vector>
 #include <iostream>
 #include <mot.h>
 
-#include "catch.hpp"
-
 using namespace mot;
 using namespace std;
 
-TEST_CASE( "Transport ID tests", "[mot]" ) {
-
-	SECTION ("SEQUENTIAL") {
-		SequentialTransportIdGenerator* id = SequentialTransportIdGenerator::getInstance(8000);
-		REQUIRE(id->next() == 8000);
-		REQUIRE(id->next() == 8001);
-		REQUIRE(id->next() == 8002);
-		REQUIRE(id->next() == 8003);
-		REQUIRE(id->next() == 8004);
-		REQUIRE(id->next() == 8005);
-	}
-	
+int main()
+{
+    SequentialTransportIdGenerator* id = SequentialTransportIdGenerator::getInstance(8000);
+    if(id->next() != 8000) return 1;
+    if(id->next() != 8001) return 1;
+    if(id->next() != 8002) return 1;
+    if(id->next() != 8003) return 1;
+    if(id->next() != 8004) return 1;
+    if(id->next() != 8005) return 1;
 }

@@ -8,8 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "charsets.h"
-#include "util.h"
+#include <charsets.h>
 
 using namespace std;
 
