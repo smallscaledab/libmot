@@ -1,5 +1,5 @@
-#include "../include/mot.h"
-#include "util.h"
+#include "include/mot.h"
+#include "mot_util.h"
 
 #include <iostream>
 #include <bitset>
@@ -267,7 +267,7 @@ namespace mot
     }
 
     RelativeExpiration::RelativeExpiration(long offset)
-        : HeaderParameter(4), offset(offset)
+        : HeaderParameter(9), offset(offset)
     { }
 
     bool RelativeExpiration::equals(const HeaderParameter& other) const
@@ -280,26 +280,26 @@ namespace mot
     {
         if(offset < (127 * 60)) // < 127m
         {
-            bitset<8> bits(0 + // granularity(2)
-                ((offset/(2 * 60)) << 2)); // offset in 2 minute interval (6)
+            bitset<8> bits((offset/(2*60)) + // offset in 2m interval (6)
+                           (0 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
         else if(offset < (1891 * 60)) // < 1891m
         {
-            bitset<8> bits(1 + // granularity(2)
-                          ((offset/(30 * 60)) << 2)); // offset in 30 minute interval (6)
+            bitset<8> bits((offset/(30*60)) + // offset in 30m interval (6)
+                           (1 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
         else if(offset < (127 * 60 * 60)) // < 127h
         {
-            bitset<8> bits(2 + // granularity(2)
-                          ((offset/(2 * 60 * 60)) << 2)); // offset in 2 hour interval (6)
+            bitset<8> bits((offset/(2*60*60)) + // offset in 2h interval (6)
+                           (2 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
         else if(offset < (64 * 24 * 60 * 60)) // < 64d
         {
-            bitset<8> bits(3 + // granularity(2)
-                          ((offset/(24 * 60 * 60)) << 2)); // offset in day interval (6)
+            bitset<8> bits((offset/(24*60*60)) + // offset in 1d interval (6)
+                           (3 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
 
@@ -307,7 +307,7 @@ namespace mot
     }
 
     AbsoluteExpiration::AbsoluteExpiration(long timepoint)
-        : HeaderParameter(4), timepoint(timepoint)
+        : HeaderParameter(9), timepoint(timepoint)
     { }
 
     bool AbsoluteExpiration::equals(const HeaderParameter& other) const

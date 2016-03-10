@@ -3,7 +3,7 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libzmq
+Name: libmot
 Description: DAB MOT (ETSI EN 301 234) c++ library
 Version: @VERSION@
 Libs: -L${libdir} -lmot

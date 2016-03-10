@@ -15,10 +15,10 @@ lib_LTLIBRARIES = src/libmot.la
 
 include_HEADERS = \
     include/mot.h \
-    include/contenttypes.h
+    include/mot_contenttypes.h \
+    include/mot_charsets.h
 
 src_libmot_la_SOURCES = \
-    src/util.h \
     src/mot.cpp
 
 src_libmot_la_CPPFLAGS = 
@@ -62,5 +62,19 @@ check_PROGRAMS = ${test_apps}
 #  Run the test cases
 TESTS = $(test_apps)
 XFAIL_TESTS =
+
+#
+# Utilities (mostly for testing)
+#
+util_apps = \
+    tests/decode_headermode \
+    tests/decode_directorymode
+
+tests_decode_headermode_SOURCES = \
+    tests/decode_headermode.cpp
+tests_decode_headermode_LDADD = src/libmot.la
+
+utils_PROGRAMS = ${util_apps}
+
 
 EXTRA_DIST	= COPYING NEWS README.md INSTALL.md LICENCE AUTHORS ChangeLog TODO doc

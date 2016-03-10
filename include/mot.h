@@ -7,8 +7,9 @@
 #include <string>
 #include <stdlib.h>
 #include <time.h>
+#include <bitset>
 
-#include <charsets.h>
+#include "mot_charsets.h"
 
 using namespace std;
 
@@ -482,4 +483,4 @@ namespace mot {
 
 }
 
-#endif /* MOT_H_ */
+#endif // MOT_H

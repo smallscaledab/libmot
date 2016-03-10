@@ -2,8 +2,8 @@
 #include <iostream>
 
 #include <mot.h> 
-#include <contenttypes.h>
-#include "../src/util.h"
+#include <mot_util.h> 
+#include <mot_contenttypes.h>
 
 using namespace mot;
 using namespace std;
