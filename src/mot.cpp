@@ -1,5 +1,5 @@
-#include "include/mot.h"
-#include "mot_util.h"
+#include <mot.h>
+#include "mot/util.h"
 
 #include <iostream>
 #include <bitset>

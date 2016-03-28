@@ -15,13 +15,13 @@ lib_LTLIBRARIES = src/libmot.la
 
 include_HEADERS = \
     include/mot.h \
-    include/mot_contenttypes.h \
-    include/mot_charsets.h
+    include/mot/contenttypes.h \
+    include/mot/charsets.h
 
 src_libmot_la_SOURCES = \
     src/mot.cpp
 
-src_libmot_la_CPPFLAGS = 
+src_libmot_la_CPPFLAGS = -Iinclude
 src_libmot_la_CXXFLAGS = @LIBMOT_EXTRA_CXXFLAGS@
 src_libmot_la_LIBADD =
 
@@ -74,7 +74,7 @@ tests_decode_headermode_SOURCES = \
     tests/decode_headermode.cpp
 tests_decode_headermode_LDADD = src/libmot.la
 
-utils_PROGRAMS = ${util_apps}
+#utils_PROGRAMS = ${util_apps}
 
 
 EXTRA_DIST	= COPYING NEWS README.md INSTALL.md LICENCE AUTHORS ChangeLog TODO doc
