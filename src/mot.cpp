@@ -78,7 +78,7 @@ namespace mot
         addParameter(&name);
     }
 
-    MotObject::MotObject(int transportId, string &name, const vector<unsigned char> &body, ContentType type)
+    MotObject::MotObject(int transportId, string name, const vector<unsigned char> &body, ContentType type)
         : transportId(transportId), name(ContentName(name)), body(body), type(type)
     {
         addParameter(new ContentName(name));
@@ -96,7 +96,7 @@ namespace mot
         addParameter(&name);
     }
 
-    MotObject::MotObject(int transportId, string &name, ContentType type)
+    MotObject::MotObject(int transportId, string name, ContentType type)
         : transportId(transportId), name(ContentName(name)), type(type)
     {
         addParameter(new ContentName(name));

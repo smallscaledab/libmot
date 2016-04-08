@@ -297,15 +297,15 @@ namespace mot {
 
 	public:
 
-		MotObject(int transportId, ContentName &name, const std::vector<unsigned char> & body, ContentType type);
+		MotObject(int transportId, ContentName &name, const std::vector<unsigned char> &body, ContentType type);
 
-		MotObject(int transportId, std::string &name, const std::vector<unsigned char> &body, ContentType type);
+		MotObject(int transportId, std::string name, const std::vector<unsigned char> &body, ContentType type);
 
 		MotObject(int transportId, const char *name, const std::vector<unsigned char> &body, ContentType type);
 
 		MotObject(int transportId, ContentName &name, ContentType type);
 
-		MotObject(int transportId, std::string &name, ContentType type);
+		MotObject(int transportId, std::string name, ContentType type);
 
 		MotObject(int transportId, const char *name, ContentType type);
 
