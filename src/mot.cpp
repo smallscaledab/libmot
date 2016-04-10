@@ -72,49 +72,49 @@ namespace mot
         }
     }
 
-    MotObject::MotObject(int transportId, ContentName &name, const vector<unsigned char> &body, ContentType type)
+    MotObject::MotObject(int transportId, ContentName name, const vector<unsigned char> &body, ContentType type)
         : transportId(transportId), name(name), body(body), type(type)
     {
-        addParameter(&name);
+        AddParameter(&name);
     }
 
     MotObject::MotObject(int transportId, string name, const vector<unsigned char> &body, ContentType type)
         : transportId(transportId), name(ContentName(name)), body(body), type(type)
     {
-        addParameter(new ContentName(name));
+        AddParameter(new ContentName(name));
     }
 
     MotObject::MotObject(int transportId, const char *name, const vector<unsigned char> &body, ContentType type)
         : transportId(transportId), name(ContentName(name)), body(body), type(type)
     {
-        addParameter(new ContentName(string(name)));
+        AddParameter(new ContentName(string(name)));
     }
 
-    MotObject::MotObject(int transportId, ContentName &name, ContentType type)
+    MotObject::MotObject(int transportId, ContentName name, ContentType type)
         : transportId(transportId), name(name), type(type)
     {
-        addParameter(&name);
+        AddParameter(&name);
     }
 
     MotObject::MotObject(int transportId, string name, ContentType type)
         : transportId(transportId), name(ContentName(name)), type(type)
     {
-        addParameter(new ContentName(name));
+        AddParameter(new ContentName(name));
     }
 
     MotObject::MotObject(int transportId, const char *name, ContentType type)
         : transportId(transportId), name(ContentName(name)), type(type)
     {
-        addParameter(new ContentName(string(name)));
+        AddParameter(new ContentName(string(name)));
     }
 
-    void MotObject::addParameter(HeaderParameter *parameter)
+    void MotObject::AddParameter(HeaderParameter *parameter)
     {
         parameters.push_back(parameter);
     }
 
     template <typename T>
-    vector<HeaderParameter*> MotObject::getParameterByType()
+    vector<HeaderParameter*> MotObject::ParameterByType()
     {
         vector<HeaderParameter*> result;
         for(HeaderParameter *parameter : parameters)
@@ -127,22 +127,22 @@ namespace mot
         return result;
     }
 
-    vector<unsigned char> MotObject::encodeHeader() const
+    vector<unsigned char> MotObject::Header() const
     {
         vector<unsigned char> data;
 
         // encode the parameters
         vector<unsigned char> header_data;
-        for(HeaderParameter* param : this->getParameters())
+        for(HeaderParameter* param : this->Parameters())
         {
-            header_data = header_data + param->encode();
+            header_data = header_data + param->Encode();
         }
 
         // assemble the core
-        bitset<56> core_header_bits(this->getType().subtype + // content subtype (9)
-                       (this->getType().type << 9) + // content type (6))
+        bitset<56> core_header_bits(this->Type().subtype + // content subtype (9)
+                       (this->Type().type << 9) + // content type (6))
                        ((header_data.size() + 7) << 15) + // header size (13)
-                       (this->getBody().size() << 28)); // body size (28)
+                       (this->Body().size() << 28)); // body size (28)
 
         data = data + bits_to_bytes(core_header_bits);
         data = data + header_data; 
@@ -151,7 +151,7 @@ namespace mot
     }
 
     template <typename T>
-    bool MotObject::hasParameter()
+    bool MotObject::HasParameter()
     {
         for(HeaderParameter* p : parameters)
         {
@@ -172,29 +172,26 @@ namespace mot
         : id(id)
     { }
 
-    Parameter::~Parameter()
-    { }
-
-    vector<unsigned char> Parameter::encode()
+    vector<unsigned char> Parameter::Encode()
     {
         vector<unsigned char> data;
-        vector<unsigned char> encoded_param_data = this->encodeData();
+        vector<unsigned char> encoded_param_data = this->EncodeData();
 
         if(encoded_param_data.size() == 0)
         {
-            bitset<8> pli_bits((this->getId()) + // ParamId (6)
+            bitset<8> pli_bits((this->Id()) + // ParamId (6)
                               (0 << 6)); // PLI=0 (2)
             data = data + bits_to_bytes(pli_bits);
         }
         else if(encoded_param_data.size() == 1)
         {
-            bitset<8> pli_bits((this->getId()) + // ParamId (6)
+            bitset<8> pli_bits((this->Id()) + // ParamId (6)
                               (1 << 6)); // PLI=1 (2)
             data = data + bits_to_bytes(pli_bits);
         }
         else if(encoded_param_data.size() == 4)
         {
-            bitset<8> pli_bits((this->getId()) + // ParamId (6)
+            bitset<8> pli_bits((this->Id()) + // ParamId (6)
                               (2 << 6)); // PLI=2 (2)
             data = data + bits_to_bytes(pli_bits);
         }
@@ -202,7 +199,7 @@ namespace mot
         {
             bitset<16> pli_bits(encoded_param_data.size() + // DataFieldLength (7)
                                (0 << 7) + // Ext=0
-                               (this->getId() << 8) + // ParamId (6)
+                               (this->Id() << 8) + // ParamId (6)
                                (3 << 14)); // PLI=3 (2)
             data = data + bits_to_bytes(pli_bits);
         }
@@ -210,7 +207,7 @@ namespace mot
         {
             bitset<24> pli_bits(encoded_param_data.size() + // DataFieldLength (15)
                                (1 << 15) + // Ext=1
-                               (this->getId() << 16) + // ParamId (6)
+                               (this->Id() << 16) + // ParamId (6)
                                (3 << 22)); // PLI=3 (2)
             data = data + bits_to_bytes(pli_bits);
         }
@@ -225,10 +222,7 @@ namespace mot
         : Parameter(id)
     { }
 
-    HeaderParameter::~HeaderParameter()
-    { }
-
-    ContentName::ContentName(const string &name, Charset charset)
+    ContentName::ContentName(const string name, Charset charset)
         : HeaderParameter(12), name(name), charset(charset)
     { }
 
@@ -239,7 +233,7 @@ namespace mot
                 this->name == that->name);
     }
 
-    vector<unsigned char> ContentName::encodeData() const
+    vector<unsigned char> ContentName::EncodeData() const
     {
         bitset<8> bits(charset << 4); // charset(4)
 
@@ -249,7 +243,7 @@ namespace mot
         return bytes;
     }
 
-    MimeType::MimeType(const string &mimetype)
+    MimeType::MimeType(const string mimetype)
         : HeaderParameter(16), mimetype(mimetype)
     { }
 
@@ -259,46 +253,46 @@ namespace mot
         return that != nullptr && (this->mimetype == that->mimetype);
     }
 
-    vector<unsigned char> MimeType::encodeData() const
+    vector<unsigned char> MimeType::EncodeData() const
     {
         vector<unsigned char> bytes;
         copy(mimetype.begin(), mimetype.end(), back_inserter(bytes));
         return bytes;
     }
 
-    RelativeExpiration::RelativeExpiration(long offset)
-        : HeaderParameter(9), offset(offset)
+    RelativeExpiration::RelativeExpiration(unsigned int minutes)
+        : HeaderParameter(9), minutes(minutes)
     { }
 
     bool RelativeExpiration::equals(const HeaderParameter& other) const
     {
         const RelativeExpiration* that = dynamic_cast<const RelativeExpiration*>(&other);
-        return that != nullptr && (this->offset == that->offset);
+        return that != nullptr && (this->minutes == that->minutes);
     }
 
-    vector<unsigned char> RelativeExpiration::encodeData() const
+    vector<unsigned char> RelativeExpiration::EncodeData() const
     {
-        if(offset < (127 * 60)) // < 127m
+        if(minutes < 127) // < 127m
         {
-            bitset<8> bits((offset/(2*60)) + // offset in 2m interval (6)
+            bitset<8> bits((minutes/2) + // offset in 2m interval (6)
                            (0 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
-        else if(offset < (1891 * 60)) // < 1891m
+        else if(minutes < 1891) // < 1891m
         {
-            bitset<8> bits((offset/(30*60)) + // offset in 30m interval (6)
+            bitset<8> bits((minutes/30) + // offset in 30m interval (6)
                            (1 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
-        else if(offset < (127 * 60 * 60)) // < 127h
+        else if(minutes < (127 * 60)) // < 127h
         {
-            bitset<8> bits((offset/(2*60*60)) + // offset in 2h interval (6)
+            bitset<8> bits((minutes/(2*60)) + // offset in 2h interval (6)
                            (2 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
-        else if(offset < (64 * 24 * 60 * 60)) // < 64d
+        else if(minutes < (64 * 24 * 60)) // < 64d
         {
-            bitset<8> bits((offset/(24*60*60)) + // offset in 1d interval (6)
+            bitset<8> bits((minutes/(24*60)) + // offset in 1d interval (6)
                            (3 << 6)); // granularity (2)
             return bits_to_bytes(bits);
         }
@@ -316,7 +310,7 @@ namespace mot
         return that != nullptr && (this->timepoint == that->timepoint);
     }
 
-    vector<unsigned char> AbsoluteExpiration::encodeData() const
+    vector<unsigned char> AbsoluteExpiration::EncodeData() const
     {
         return timepoint_to_encoded_utc(timepoint);
     }
@@ -325,7 +319,7 @@ namespace mot
         : HeaderParameter(17), type(type)
     { }
 
-    vector<unsigned char> Compression::encodeData() const
+    vector<unsigned char> Compression::EncodeData() const
     {
         bitset<8> bits(type);
         return bits_to_bytes(bits);
@@ -341,7 +335,7 @@ namespace mot
         : HeaderParameter(10), priority(priority)
     { }
 
-    vector<unsigned char> Priority::encodeData() const
+    vector<unsigned char> Priority::EncodeData() const
     {
         bitset<8> bits(priority);
         return bits_to_bytes(bits);
@@ -357,14 +351,11 @@ namespace mot
         : Parameter(id)
     { }
 
-    DirectoryParameter::~DirectoryParameter()
-    { }
-
     SortedHeaderInformation::SortedHeaderInformation() :
         DirectoryParameter(0)
     { }
 
-    vector<unsigned char> SortedHeaderInformation::encodeData() const
+    vector<unsigned char> SortedHeaderInformation::EncodeData() const
     {
         return vector<unsigned char>();
     }
@@ -373,7 +364,7 @@ namespace mot
         : transportId(transportId), data(data), index(index), repetition(repetition), type(type), last(last)
     { }
 
-    vector<unsigned char> Segment::encode() const {
+    vector<unsigned char> Segment::Encode() const {
         bitset<16> bits(data.size() + // segment size (13)
                        (repetition << 13)); // repetition (3)
         vector<unsigned char> bytes = bits_to_bytes(bits);
@@ -385,44 +376,44 @@ namespace mot
         : strategy(strategy)
     { }
 
-    vector<Segment*> SegmentEncoder::encode(MotObject object)
+    vector<Segment> SegmentEncoder::Encode(MotObject object)
     {
-        vector<Segment*> segments;
+        vector<Segment> segments;
         
-        int chunk_size = strategy->getSegmentSize(object);
+        int chunk_size = strategy->SegmentSize(object);
 
         // segment header data
-        vector<unsigned char> header_data = object.encodeHeader();
+        vector<unsigned char> header_data = object.Header();
         vector<vector<unsigned char> > chunked_segments = chunk_segments(header_data, chunk_size);
         for (auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
         {
             segments.push_back(
-                    new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Header,
+                    Segment(object.TransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Header,
                             (i == (chunked_segments.end() - 1)) ? true : false));
         }
 
         // segment body data
-        vector<unsigned char> body_data = object.getBody();
+        vector<unsigned char> body_data = object.Body();
         chunked_segments = chunk_segments(body_data, chunk_size);
         for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
         {
             segments.push_back(
-                    new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
+                    Segment(object.TransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
                             (i == (chunked_segments.end() - 1)) ? true : false));
         }
 
         return segments;
     }
 
-    vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject> objects)
+    vector<Segment> SegmentEncoder::Encode(int transportId, vector<MotObject> objects)
     {
         vector<DirectoryParameter*> parameters;
-        return this->encode(transportId, objects, parameters);
+        return this->Encode(transportId, objects, parameters);
     }    
 
-    vector<Segment*> SegmentEncoder::encode(int transportId, vector<MotObject> objects, vector<DirectoryParameter*> parameters)
+    vector<Segment> SegmentEncoder::Encode(int transportId, vector<MotObject> objects, vector<DirectoryParameter*> parameters)
     {
-        vector<Segment*> segments;
+        vector<Segment> segments;
 
         // encode the directory
         vector<unsigned char> directory_data;
@@ -431,14 +422,14 @@ namespace mot
         vector<unsigned char> directory_entries_data;
         for(MotObject object : objects)
         {
-            directory_entries_data = directory_entries_data + bits_to_bytes(bitset<16>(object.getTransportId())) + object.encodeHeader();
+            directory_entries_data = directory_entries_data + bits_to_bytes(bitset<16>(object.TransportId())) + object.Header();
         }
 
         // directory extension
         vector<unsigned char> directory_extension_data;
         for(DirectoryParameter* parameter : parameters)
         {
-            directory_extension_data = directory_extension_data + parameter->encode();
+            directory_extension_data = directory_extension_data + parameter->Encode();
         }
         directory_extension_data = bits_to_bytes(bitset<16>(directory_extension_data.size())) + directory_extension_data;
 
@@ -453,11 +444,11 @@ namespace mot
         directory_data = directory_data + directory_entries_data;
 
         // segment the directory
-        vector<vector<unsigned char> > chunked_segments = chunk_segments(directory_data, strategy->getSegmentSize());
+        vector<vector<unsigned char> > chunked_segments = chunk_segments(directory_data, strategy->SegmentSize());
         for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
         {
             segments.push_back(
-                    new Segment(transportId, *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Directory_Uncompressed,
+                    Segment(transportId, *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Directory_Uncompressed,
                             (distance(i, (chunked_segments.end() - 1)) == 0) ? true : false));
         }
 
@@ -465,10 +456,10 @@ namespace mot
         for(MotObject object : objects)
         {
             // segment the data
-            vector<vector<unsigned char> > chunked_segments = chunk_segments(object.getBody(), strategy->getSegmentSize(object));
+            vector<vector<unsigned char> > chunked_segments = chunk_segments(object.Body(), strategy->SegmentSize(object));
             for(auto i = chunked_segments.begin(); i != chunked_segments.end(); ++i)
             {
-                segments.push_back(new Segment(object.getTransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
+                segments.push_back(Segment(object.TransportId(), *i, distance(chunked_segments.begin(), i), 0, SegmentDatagroupTypes::Body,
                             (distance(i, --chunked_segments.end()) == 0) ? true : false));
             }
         }
@@ -500,27 +491,24 @@ namespace mot
         : size(size)
     { }
 
-    int ConstantSizeSegmentationStrategy::getSegmentSize() {
+    int ConstantSizeSegmentationStrategy::SegmentSize() {
         return size;
     }
 
-    int ConstantSizeSegmentationStrategy::getSegmentSize(const MotObject &object) {
+    int ConstantSizeSegmentationStrategy::SegmentSize(const MotObject &object) {
         return size;
     }
 
-    int SequentialTransportIdGenerator::next()
+    unsigned int SequentialTransportIdGenerator::Next()
     {
         return ++last;
     }
 
-    SequentialTransportIdGenerator* SequentialTransportIdGenerator::instance;
-
-    SequentialTransportIdGenerator::SequentialTransportIdGenerator(int initial) 
+    SequentialTransportIdGenerator::SequentialTransportIdGenerator(unsigned int initial) 
         : last(initial-1) 
     {}
 
-
-    int RandomTransportIdGenerator::next()
+    unsigned int RandomTransportIdGenerator::Next()
     {
         int next = rand() % (1<<16) + 1;
         while(find(ids.begin(), ids.end(), next) != ids.end())
@@ -531,6 +519,4 @@ namespace mot
         return next;
     }
 
-
-    RandomTransportIdGenerator* RandomTransportIdGenerator::instance;
 }
