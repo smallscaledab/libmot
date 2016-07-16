@@ -46,4 +46,14 @@ int main() {
 
 # building
 
-automake --add-missing
+autoreconf
+./configure
+make
+
+# installing
+
+make install
+
+# uninstalling
+
+make uninstall
