@@ -47,8 +47,9 @@ int main() {
 # building
 
 libtoolize (or glibtoolize on mac)
+aclocal
 automake --add-missing
-autoconf
+autoreconf
 ./configure
 make
 
