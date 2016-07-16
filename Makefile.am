@@ -33,7 +33,8 @@ test_apps = \
     tests/test_mot_headermode \
     tests/test_mot_directorymode \
     tests/test_time \
-    tests/test_transportid 
+    tests/test_transportid \
+    tests/test_example
 
 tests_test_header_parameters_SOURCES = \
     tests/test_header_parameters.cpp 
@@ -48,14 +49,16 @@ tests_test_mot_directorymode_SOURCES = \
 tests_test_mot_directorymode_LDADD = src/libmot.la
 
 tests_test_time_SOURCES = \
-    tests/test_time.cpp \
-    tests/catch.hpp
+    tests/test_time.cpp 
 tests_test_time_LDADD = src/libmot.la
 
 tests_test_transportid_SOURCES = \
-    tests/test_transportid.cpp \
-    tests/catch.hpp
+    tests/test_transportid.cpp 
 tests_test_transportid_LDADD = src/libmot.la
+
+tests_test_example_SOURCES = \
+    tests/test_example.cpp 
+tests_test_example_LDADD = src/libmot.la
 
 check_PROGRAMS = ${test_apps}
 
