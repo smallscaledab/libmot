@@ -13,6 +13,9 @@ Currently under development, so subject to changes and refactoring.
 
 # TODO
 
+* Add API documentation
+* Decoding of MOT objects
+
 # Examples
 
 Encoding a simple text MOT object into Datagroups and write out the resultant data as hex pairs for each segment to the console.
