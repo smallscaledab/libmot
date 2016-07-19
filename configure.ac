@@ -189,6 +189,7 @@ AC_SUBST([pkgconfigdir])
 AC_CONFIG_FILES([ \
     Makefile \
     src/libmot.pc \
-    doc/Makefile])
+    doc/Makefile \
+    include/Makefile])
 
 AC_OUTPUT
