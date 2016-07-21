@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I config
 
 SUBDIRS	= doc include
 
-pkgconfig_DATA = src/libmot.pc
+pkgconfig_DATA = libmot.pc
 
 AM_CPPFLAGS = \
     -I$(top_builddir)/include \
