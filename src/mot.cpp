@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <bitset>
+#include <algorithm>
+#include <typeinfo>
 
 using namespace std;
 using namespace std::chrono;
