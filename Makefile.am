@@ -22,20 +22,12 @@ src_libmot_la_LIBADD =
 test_apps = \
     tests/test_header_parameters \
     tests/test_mot_headermode \
-    tests/test_mot_directorymode \
-    tests/test_time \
-    tests/test_transportid \
-    tests/test_example
+    tests/test_mot_directorymode 
 
 tests_test_header_parameters_SOURCES = \
     tests/test_header_parameters.cpp 
 tests_test_header_parameters_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
 tests_test_header_parameters_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS}
-
-tests_test_directory_parameters_SOURCES = \
-    tests/test_directory_parameters.cpp 
-tests_test_directory_parameters_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
-tests_test_directory_parameters_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS}
 
 tests_test_mot_headermode_SOURCES = \
     tests/test_mot_headermode.cpp 
@@ -46,21 +38,6 @@ tests_test_mot_directorymode_SOURCES = \
     tests/test_mot_directorymode.cpp 
 tests_test_mot_directorymode_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
 tests_test_mot_directorymode_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
-
-tests_test_time_SOURCES = \
-    tests/test_time.cpp 
-tests_test_time_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
-tests_test_time_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
-
-tests_test_transportid_SOURCES = \
-    tests/test_transportid.cpp 
-tests_test_transportid_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
-tests_test_transportid_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
-
-tests_test_example_SOURCES = \
-    tests/test_example.cpp 
-tests_test_example_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
-tests_test_example_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
 
 check_PROGRAMS = ${test_apps}
 
