@@ -32,6 +32,7 @@ AX_CXX_COMPILE_STDCXX_11([noext], [mandatory])
 AC_PROG_SED
 AC_PROG_AWK
 PKG_PROG_PKG_CONFIG
+AM_PATH_CPPUNIT(1.9.6)
 m4_pattern_forbid([^PKG_[A-Z_]+$], [missing some pkg-config macros (pkg-config package)])
 
 # Libtool configuration for different targets. See acinclude.m4

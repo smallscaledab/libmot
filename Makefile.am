@@ -29,33 +29,38 @@ test_apps = \
 
 tests_test_header_parameters_SOURCES = \
     tests/test_header_parameters.cpp 
-tests_test_header_parameters_LDADD = src/libmot.la
-tests_test_header_parameters_CPPFLAGS = -Iinclude
+tests_test_header_parameters_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
+tests_test_header_parameters_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS}
+
+tests_test_directory_parameters_SOURCES = \
+    tests/test_directory_parameters.cpp 
+tests_test_directory_parameters_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
+tests_test_directory_parameters_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS}
 
 tests_test_mot_headermode_SOURCES = \
     tests/test_mot_headermode.cpp 
-tests_test_mot_headermode_LDADD = src/libmot.la
-tests_test_mot_headermode_CPPFLAGS = -Iinclude
+tests_test_mot_headermode_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
+tests_test_mot_headermode_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
 
 tests_test_mot_directorymode_SOURCES = \
     tests/test_mot_directorymode.cpp 
-tests_test_mot_directorymode_LDADD = src/libmot.la
-tests_test_mot_directorymode_CPPFLAGS = -Iinclude
+tests_test_mot_directorymode_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
+tests_test_mot_directorymode_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
 
 tests_test_time_SOURCES = \
     tests/test_time.cpp 
-tests_test_time_LDADD = src/libmot.la
-tests_test_time_CPPFLAGS = -Iinclude
+tests_test_time_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
+tests_test_time_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
 
 tests_test_transportid_SOURCES = \
     tests/test_transportid.cpp 
-tests_test_transportid_LDADD = src/libmot.la
-tests_test_transportid_CPPFLAGS = -Iinclude
+tests_test_transportid_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
+tests_test_transportid_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
 
 tests_test_example_SOURCES = \
     tests/test_example.cpp 
-tests_test_example_LDADD = src/libmot.la
-tests_test_example_CPPFLAGS = -Iinclude
+tests_test_example_CPPFLAGS = -Iinclude ${CPPUNIT_CFLAGS}
+tests_test_example_LDADD = -Lsrc/.libs -lmot ${CPPUNIT_LIBS} 
 
 check_PROGRAMS = ${test_apps}
 
