@@ -7,87 +7,28 @@
 #include <string>
 #include <stdlib.h>
 #include <time.h>
+#include <bitset>
+#include <chrono>
 
-#include "util.h"
+#include "mot/charsets.h"
 
 using namespace std;
+using namespace std::chrono;
+
+using DateTime = time_point<system_clock>;
+using Duration = seconds;
 
 namespace mot {
 
-	vector<unsigned char> timepoint_to_encoded_utc(int timepoint);
-
 	int timepoint_to_mjd(int timepoint);
+
+	vector<unsigned char> timepoint_to_encoded_utc(int timepoint);
 
 	struct ContentType
 	{
 		int type;
 		int subtype;
 	};
-	namespace ContentTypes
-	{
-		// general data
-		namespace General
-		{
-			const ContentType Object_Transfer = {0, 0};
-			const ContentType MIME_HTTP = {0, 1};
-		}
-
-		// text
-		namespace Text
-		{
-			const ContentType ASCII = {1, 0};
-			const ContentType ISO = {1, 1};
-			const ContentType HTML = {1, 2};
-		}
-
-		// image
-		namespace Image
-		{
-			const ContentType GIF = {2, 0};
-			const ContentType JFIF = {2, 1};
-			const ContentType BMP = {2, 2};
-			const ContentType PNG = {2, 3};
-		}
-
-		// audio
-		namespace Audio
-		{
-			const ContentType MPEG1_L1 = {3, 0};
-			const ContentType MPEG1_L2 = {3, 1};
-			const ContentType MPEG1_L3 = {3, 2};
-			const ContentType MPEG2_L1 = {3, 3};
-			const ContentType MPEG2_L2 = {3, 4};
-			const ContentType MPEG2_L3 = {3, 5};
-			const ContentType PCM = {3, 6};
-			const ContentType AIFF = {3, 7};
-			const ContentType ATRAC = {3, 8};
-			const ContentType ATRAC2 = {3, 9};
-			const ContentType MPEG4 = {3, 10};
-		}
-
-		// video
-		namespace Video
-		{
-			const ContentType MPEG1 = {4, 0};
-			const ContentType MPEG2 = {4, 1};
-			const ContentType MPEG4 = {4, 2};
-			const ContentType H263 = {4, 3};
-		}
-
-		// MOT
-		namespace MOT
-		{
-			const ContentType Update = {5, 0};
-		}
-
-		// system
-		namespace System
-		{
-			const ContentType MHEG = {6, 0};
-			const ContentType Java = {6, 1};
-		}
-
-	}
 
     class Parameter
     {
@@ -96,13 +37,11 @@ namespace mot {
 
 		Parameter(int id);
 
-		virtual ~Parameter() = 0;
+        std::vector<unsigned char> Encode();
 
-        std::vector<unsigned char> encode();
+		virtual std::vector<unsigned char> EncodeData() const = 0;
 
-		virtual std::vector<unsigned char> encodeData() const = 0;
-
-		int getId() const { return id; };
+		int Id() const { return id; };
 
     private:
 
@@ -117,8 +56,6 @@ namespace mot {
 
 		HeaderParameter(int id);
 
-		virtual ~HeaderParameter() = 0;
-
 		bool operator== (const HeaderParameter &other)
 		{
 			return equals(other);
@@ -131,31 +68,14 @@ namespace mot {
 
 	};
 
-	typedef int Charset;
-	namespace Charsets
-	{
-		namespace EBU
-		{
-			const Charset Latin = 0;
-			const Charset Latin_Common_Core = 1;
-			const Charset Latin_Core = 2;
-		}
-		namespace ISO
-		{
-			const Charset Latin2 = 3;
-			const Charset Latin1 = 4;
-			const Charset IEC_10646 = 15;
-		}
-	}
-
 	class ContentName : public HeaderParameter
 	{
 
 	public:
 
-		ContentName(const std::string &name, Charset charset = Charsets::ISO::Latin1);
+		ContentName(const std::string name, Charset charset = Charsets::ISO::Latin1);
 
-		vector<unsigned char> encodeData() const;
+		vector<unsigned char> EncodeData() const;
 
 	protected:
 
@@ -174,9 +94,9 @@ namespace mot {
 
 	public:
 
-		MimeType(const std::string &mimetype);
+		MimeType(const std::string mimetype);
 
-		vector<unsigned char> encodeData() const;
+		vector<unsigned char> EncodeData() const;
 
 	protected:
 
@@ -193,9 +113,9 @@ namespace mot {
 
 	public:
 
-		RelativeExpiration(long offset);
+		RelativeExpiration(unsigned int minutes);
 
-		vector<unsigned char> encodeData() const;
+		vector<unsigned char> EncodeData() const;
 
 	protected:
 
@@ -203,7 +123,7 @@ namespace mot {
 
 	private:
 
-		long offset;
+		unsigned int minutes;
 
 	};
 
@@ -211,10 +131,10 @@ namespace mot {
 	{
 
 	public:
+    
+		AbsoluteExpiration(long timepoint = 0);
 
-		AbsoluteExpiration(long timepoint);
-
-		vector<unsigned char> encodeData() const;
+		vector<unsigned char> EncodeData() const;
 
 	protected:
 
@@ -239,7 +159,7 @@ namespace mot {
 
 		Compression(CompressionType type);
 
-		vector<unsigned char> encodeData() const;
+		vector<unsigned char> EncodeData() const;
 
 	protected:
 
@@ -257,7 +177,7 @@ namespace mot {
 
 		Priority(unsigned short int priority);
 
-		vector<unsigned char> encodeData() const;
+		vector<unsigned char> EncodeData() const;
 
 	protected:
 
@@ -274,8 +194,6 @@ namespace mot {
 	public:
 
 		DirectoryParameter(int id);
-
-		virtual ~DirectoryParameter() = 0;
 
 		bool operator== (const DirectoryParameter &other)
 		{
@@ -299,7 +217,7 @@ namespace mot {
 
 		bool equals(const DirectoryParameter& a) const { return true; }
 
-		vector<unsigned char> encodeData() const;
+		vector<unsigned char> EncodeData() const;
 
 	};
 
@@ -313,7 +231,7 @@ namespace mot {
 
 	public:
 
-		virtual int next() = 0;
+		virtual unsigned int Next() = 0;
 
 	};
 
@@ -321,57 +239,28 @@ namespace mot {
 	{
 
 	public:
+    
+        SequentialTransportIdGenerator(unsigned int initial = 1);
 
-		static SequentialTransportIdGenerator* getInstance()
-		{
-			if(!instance) instance = new SequentialTransportIdGenerator(initial);
-			return instance;
-		}
-
-		int next();
-
-		static int initial;
-
-	protected:
-
-		~SequentialTransportIdGenerator() { };
+		unsigned int Next();
 
 	private:
 
-		SequentialTransportIdGenerator(int initial) : last(initial-1) {
- };
-
-		static SequentialTransportIdGenerator* instance;
-
 		int last;
-
-	};
-	int SequentialTransportIdGenerator::initial = 0;
+    };
 
 	class RandomTransportIdGenerator : public TransportIdGenerator
 	{
 
 	public:
 
-		static RandomTransportIdGenerator* getInstance()
-		{
-			if(!instance) instance = new RandomTransportIdGenerator;
-			return instance;
-		}
-
-		int next();
-
-	protected:
-
-		~RandomTransportIdGenerator() { };
-
-	private:
-
 		RandomTransportIdGenerator() {
 			srand(time(NULL));
 		};
 
-		static RandomTransportIdGenerator* instance;
+		unsigned int Next();
+
+	private:
 
 		std::vector<int> ids;
 
@@ -382,45 +271,45 @@ namespace mot {
 
 	public:
 
-		MotObject(int transportId, ContentName &name, const std::vector<unsigned char> & body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, ContentName name, const std::vector<unsigned char> &body, ContentType type);
 
-		MotObject(int transportId, std::string &name, const std::vector<unsigned char> &body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, std::string name, const std::vector<unsigned char> &body, ContentType type);
 
-		MotObject(int transportId, const char *name, const std::vector<unsigned char> &body, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, const char *name, const std::vector<unsigned char> &body, ContentType type);
 
-		MotObject(int transportId, ContentName &name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, ContentName name, ContentType type);
 
-		MotObject(int transportId, std::string &name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, std::string name, ContentType type);
 
-		MotObject(int transportId, const char *name, ContentType type = ContentTypes::General::Object_Transfer);
+		MotObject(int transportId, const char *name, ContentType type);
 
 		/**
 		 * @brief Adds a parameter
 		 */
-		void addParameter(HeaderParameter *parameter);
+		void AddParameter(HeaderParameter *parameter);
 
 		/**
 		 * @brief Returns all parameters
 		 */
-		std::vector<HeaderParameter*> getParameters() const { return parameters; };
+		std::vector<HeaderParameter*> Parameters() const { return parameters; };
 
 		template <typename T>
-		std::vector<HeaderParameter*> getParameterByType();
+		std::vector<HeaderParameter*> ParameterByType();
 
 		template <typename T>
-		bool hasParameter();
+		bool HasParameter();
 
 		void removeParameter(HeaderParameter& parameter);
 
-		int getTransportId() const { return transportId; };
+		int TransportId() const { return transportId; };
 
-		ContentName getName() const { return name; };
+		ContentName Name() const { return name; };
 
-		ContentType getType() const { return type; };
+		ContentType Type() const { return type; };
 
-        std::vector<unsigned char> encodeHeader() const;
+        std::vector<unsigned char> Header() const;
 
-		std::vector<unsigned char> getBody() const { return body; };
+		std::vector<unsigned char> Body() const { return body; };
 
 	private:
 
@@ -462,19 +351,19 @@ namespace mot {
 		 */
 		Segment(int transportId, const std::vector<unsigned char> & data, int index, int repetition, SegmentDatagroupType type, bool last = false);
 
-		std::vector<unsigned char> encode() const;
+		std::vector<unsigned char> Encode() const;
 
-		int getIndex() const { return index; };
+		int Index() const { return index; };
 
-		int getRepetition() const { return repetition; };
+		int Repetition() const { return repetition; };
 
-		SegmentDatagroupType getType() const { return type; };
+		SegmentDatagroupType Type() const { return type; };
 
-		bool isLast() const { return last; };
+		bool Last() const { return last; };
 
-		int getSize() const { return data.size(); };
+		int Size() const { return data.size(); };
 
-		int getTransportId() const { return transportId; };
+		int TransportId() const { return transportId; };
 
 	private:
 
@@ -497,9 +386,9 @@ namespace mot {
 
 	public:
 
-		virtual int getSegmentSize() = 0;
+		virtual int SegmentSize() = 0;
 
-		virtual int getSegmentSize(const MotObject &object) = 0;
+		virtual int SegmentSize(const MotObject &object) = 0;
 	};
 
 	/**
@@ -519,9 +408,9 @@ namespace mot {
 		 */
 		ConstantSizeSegmentationStrategy(int size = MAX_SEGMENT_SIZE);
 
-		int getSegmentSize();
+		int SegmentSize();
 
-		int getSegmentSize(const MotObject &object);
+		int SegmentSize(const MotObject &object);
 
 	private:
 
@@ -549,14 +438,14 @@ namespace mot {
 		 * Segment a single MOT object in MOT Header Mode
 		 * @param object MOT object to encode
 		 */
-		vector<Segment*> encode(const MotObject &object);
+		vector<Segment> Encode(MotObject object);
 
 		/**
 		 * Segment s directory of MOT objects in MOT directory Mode
 		 */
-		vector<Segment*> encode(int transportId, const vector<MotObject> &objects);
+		vector<Segment> Encode(int transportId, vector<MotObject> objects);
 
-		vector<Segment*> encode(int transportId, const vector<MotObject> &objects, vector<DirectoryParameter*> parameters);
+		vector<Segment> Encode(int transportId, vector<MotObject> objects, vector<DirectoryParameter*> parameters);
 
 	private:
 
@@ -568,4 +457,4 @@ namespace mot {
 
 }
 
-#endif /* MOT_H_ */
+#endif // MOT_H
